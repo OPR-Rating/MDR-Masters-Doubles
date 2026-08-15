@@ -544,6 +544,21 @@
   .mk-popt{width:100%;padding:13px 12px;border:none;border-bottom:1px solid #f1e7de;background:#fff;color:#2a1400;font-size:15px;text-align:left;cursor:pointer;font-family:inherit;}
   .mk-popt:active{background:#fbf0e6;}
   .mk-cancel{width:100%;padding:13px;background:none;border:none;color:#9a8578;font-size:14px;cursor:pointer;margin-top:6px;font-family:inherit;}
+
+/* MDR Profiles UI */
+.mdr-subtiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 18px;}
+@media(max-width:620px){.mdr-subtiles{grid-template-columns:1fr;}}
+.mdr-tile{background:#fff;border:2px solid rgba(211,84,0,.25);border-radius:16px;padding:22px 12px;text-align:center;font-weight:800;font-size:15px;color:#241509;cursor:pointer;transition:.12s;}
+.mdr-tile:hover{border-color:#D35400;transform:translateY(-1px);box-shadow:0 6px 18px rgba(211,84,0,.12);}
+.mdr-tile.on{background:linear-gradient(135deg,#D35400,#B8480A);color:#fff;border-color:#D35400;}
+.mdr-pillrow{display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 14px;}
+.mdr-pill{background:#fff;border:2px solid rgba(211,84,0,.25);border-radius:999px;padding:11px 22px;font-weight:800;font-size:15px;color:#241509;cursor:pointer;transition:.12s;min-width:96px;text-align:center;}
+.mdr-pill:hover{border-color:#D35400;}
+.mdr-pill.on{background:linear-gradient(135deg,#D35400,#B8480A);color:#fff;border-color:#D35400;}
+.mdr-brk{display:flex;gap:7px;flex-wrap:wrap;margin:4px 0 12px;}
+.mdr-brk .mdr-pill{min-width:56px;padding:9px 14px;font-size:14px;}
+.mdr-hint{color:#9a8578;font-size:13px;margin:6px 0 12px;}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -682,18 +697,18 @@
   <div class="screen hidden" id="mdrProfilesScreen">
     <div class="header"><button class="back-btn" onclick="goHome()">&#8592;</button><h1>Profiles</h1></div>
     <div class="screen-content">
-      <div class="menu-grid">
-        <button class="menu-btn" onclick="mdrIndivProfileGender()">Individual Profile</button>
-        <button class="menu-btn" onclick="mdrIndivOverallGender()">Individual Overall</button>
-        <button class="menu-btn" onclick="mdrDivisionsGender()">Divisions</button>
+      <div class="mdr-subtiles">
+        <div class="mdr-tile" id="mdrTab-ip" onclick="mdrIndivProfileGender()">Individual Profile</div>
+        <div class="mdr-tile" id="mdrTab-io" onclick="mdrIndivOverallGender()">Individual Overall</div>
+        <div class="mdr-tile" id="mdrTab-dv" onclick="mdrDivisionsGender()">Divisions</div>
       </div>
-      <div id="mdrProfilesBody" style="margin-top:16px;"></div>
+      <div id="mdrProfilesBody"></div>
     </div>
   </div>
 
   <div class="screen hidden" id="profileSearchScreen">
     <div class="header">
-      <button class="back-btn" onclick="goHome()">&#8592;</button>
+      <button class="back-btn" onclick="mdrSearchBack()">&#8592;</button>
       <h1>Team Profile</h1>
     </div>
     <div class="screen-content">
@@ -705,7 +720,7 @@
   <!-- PARTNERSHIPS (all of one person's teams) -->
   <div class="screen hidden" id="partnershipsScreen">
     <div class="header">
-      <button class="back-btn" onclick="showProfileSearch()">&#8592;</button>
+      <button class="back-btn" onclick="mdrProfileBack()">&#8592;</button>
       <h1 id="partnershipsTitle">Partnerships</h1>
     </div>
     <div class="screen-content">
@@ -902,7 +917,7 @@
           <!-- BULK ADD (desktop onboarding): paste Name, Gender, Initial Rating, PIN from Excel -->
           <div class="ac-card">
             <h4>Bulk add individuals (paste from Excel)</h4>
-            <p style="font-size:12px;color:#7a6688;margin:0 0 8px;">Paste rows of <b>Name, Gender, Rating, PIN</b> — one per line. Tabs (straight from Excel) or commas. Gender = M or F. Rating optional — blank defaults to 1500 (M) / 1300 (F).</p>
+            <p style="font-size:12px;color:#7a6688;margin:0 0 8px;">Paste rows of <b>Name, Gender, Rating, PIN, DOB</b> — one per line. Tabs (straight from Excel) or commas. Gender = M or F. Rating optional (blank = 1500 M / 1300 F). DOB optional, format YYYY-MM-DD (drives the age division).</p>
             <textarea id="bulkText" class="ac-field" style="min-height:150px;font-family:monospace;font-size:12px;" placeholder="John Smith, M, 1350, 1234&#10;Sarah Jones, F, 1180, 5678&#10;Mike Brown	M	1420	9012"></textarea>
             <button class="ac-btn ac-btn-primary" style="width:100%;" onclick="adminBulkAdd()">Add all pasted members</button>
             <div id="bulkMsg" class="ac-msg"></div>
@@ -1132,7 +1147,7 @@ async function loadPlayers(force) {
   try {
     // ODR hybrid entry: dropdowns show INDIVIDUALS (people), like OPR/OTR. Pairs are
     // auto-born from the two people chosen. Men's list = M people, Ladies = F people.
-    const data = await sbGet(`individuals?select=id,full_name,gender,seed_rating&club_id=eq.${CLUB_ID}&order=full_name.asc`) || [];
+    const data = await sbGet(`individuals?select=id,full_name,gender,seed_rating,dob&club_id=eq.${CLUB_ID}&order=full_name.asc`) || [];
     INDIV_BY_NAME = {};
     data.forEach(p=>{ INDIV_BY_NAME[p.full_name]={ id:p.id, gender:p.gender, seed_rating:p.seed_rating }; });
     MEN    = data.filter(p=>p.gender==='M').map(p=>p.full_name).sort((a,b)=>a.localeCompare(b));
@@ -2253,10 +2268,11 @@ async function adminLoadMembers(){
   try{ inds=await odrRestGet('individuals?club_id=eq.'+Number(cid)+'&order=full_name.asc'); }
   catch(e){ box.innerHTML='<span style="color:#c0392b;">'+(e.message||e)+'</span>'; adminLoadTournaments(); return; }
   if(!inds.length){ box.innerHTML='<div style="color:#888;padding:6px 0;">No individuals yet. Add them above, then build pairs in the Pairs tab.</div>'; adminLoadTournaments(); return; }
-  let html='<table class="ladder-table"><thead><tr><th>Name</th><th>G</th><th>Seed</th><th>PIN</th><th></th></tr></thead><tbody>';
+  let html='<table class="ladder-table"><thead><tr><th>Name</th><th>G</th><th>DOB</th><th>Seed</th><th>PIN</th><th></th></tr></thead><tbody>';
   inds.forEach(m=>{
-    html+='<tr><td>'+m.full_name+'</td><td>'+m.gender+'</td><td>'+Math.round(m.seed_rating)+'</td><td>'+(m.pin||'—')+'</td>'
-      +'<td style="white-space:nowrap;"><button onclick="odrEditIndividual('+m.id+',\''+m.full_name.replace(/'/g,"\\'")+'\','+m.seed_rating+',\''+(m.pin||'')+'\',\''+m.gender+'\')" style="background:none;border:none;color:#D35400;cursor:pointer;">edit</button> '
+    const _age=(typeof ageFromDob==='function')?ageFromDob(m.dob):null; const _dobCell=m.dob?(m.dob+' <span style="color:#9a8578;font-size:11px;">('+(_age!=null?_age:'?')+')</span>'):'<span style="color:#c0392b;font-size:11px;">— set DOB</span>';
+    html+='<tr><td>'+m.full_name+'</td><td>'+m.gender+'</td><td>'+_dobCell+'</td><td>'+Math.round(m.seed_rating)+'</td><td>'+(m.pin||'—')+'</td>'
+      +'<td style="white-space:nowrap;"><button onclick="odrEditIndividual('+m.id+',\''+m.full_name.replace(/'/g,"\\'")+'\','+m.seed_rating+',\''+(m.pin||'')+'\',\''+m.gender+'\',\''+(m.dob||'')+'\')" style="background:none;border:none;color:#D35400;cursor:pointer;">edit</button> '
       +'<button onclick="odrDeleteIndividual('+m.id+',\''+m.full_name.replace(/'/g,"\\'")+'\')" style="background:none;border:none;color:#c0392b;cursor:pointer;">del</button></td></tr>';
   });
   html+='</tbody></table>';
@@ -2265,8 +2281,9 @@ async function adminLoadMembers(){
   adminLoadTournaments();
 }
 // ODR individual edit/delete (REST; the individuals table is net-new).
-async function odrEditIndividual(id,name,seed,pin,gender){
+async function odrEditIndividual(id,name,seed,pin,gender,dob){
   const newName=prompt('Full name:',name); if(newName===null) return;
+  const newDob=prompt('Date of Birth (YYYY-MM-DD, blank = none):',dob||''); if(newDob===null) return;
   const newSeed=prompt('Seed rating:',seed); if(newSeed===null) return;
   const newPin=prompt('PIN (blank = none):',pin||''); if(newPin===null) return;
   const seedNum = Number(newSeed)||seed;
@@ -2277,7 +2294,7 @@ async function odrEditIndividual(id,name,seed,pin,gender){
   if(seedChanged){
     if(!confirm('Changing '+name+'\u2019s seed rating to '+seedNum+' will RE-DERIVE the initial rating of every team '+name+' is part of (60/40 of the two components) and REPLAY all their matches from the new starting point.\n\nThis moves ratings across the board. Use it mainly early on, when a person\u2019s true strength wasn\u2019t known.\n\nContinue?')) return;
   }
-  const patch={ full_name:newName.trim(), seed_rating:seedNum, pin:(newPin.trim()||null) };
+  const patch={ full_name:newName.trim(), seed_rating:seedNum, pin:(newPin.trim()||null), dob:(newDob.trim()||null) };
   try{
     // 1) update the individual (the component)
     await fetch(SB_URL+'/rest/v1/individuals?id=eq.'+id,{ method:'PATCH', headers:{ apikey:SB_ANON, Authorization:'Bearer '+SB_ANON, 'Content-Type':'application/json' }, body:JSON.stringify(patch) });
@@ -2660,19 +2677,21 @@ async function adminBulkAdd(){
   lines.forEach((ln,i)=>{
     const parts=ln.split(/\t|,/).map(p=>p.trim()).filter(p=>p!=='');
     if(parts.length<2){ errs.push('Line '+(i+1)+': need at least Name, Gender.'); return; }
-    let [name,gender,rating,pin]=parts;
+    let [name,gender,rating,pin,dob]=parts;
     gender=(gender||'').toUpperCase().charAt(0);
     if(gender!=='M'&&gender!=='F'){ errs.push('Line '+(i+1)+' ('+name+'): gender must be M or F.'); return; }
-    // ODR: rating optional — default 1500 (M) / 1300 (F) when blank/omitted.
+    // rating optional — default 1500 (M) / 1300 (F) when blank/omitted.
     let rnum=Number(rating); if(!rnum || isNaN(rnum)){ rnum=(gender==='M'?1500:1300); }
-    rows.push({ name, gender, rating:rnum, pin:(pin||'').trim()||null });
+    let dobVal=(dob||'').trim()||null;
+    if(dobVal && !/^\d{4}-\d{2}-\d{2}$/.test(dobVal)){ errs.push('Line '+(i+1)+' ('+name+'): DOB must be YYYY-MM-DD.'); return; }
+    rows.push({ name, gender, rating:rnum, pin:(pin||'').trim()||null, dob:dobVal });
   });
   if(errs.length){ msg.innerHTML='<span style="color:#c0392b;">'+errs.join('<br>')+'</span>'; return; }
   msg.innerHTML='Adding '+rows.length+' individuals…';
   let ok=0, fail=0; const failNames=[];
   for(const r of rows){
     try{
-      await odrRestPost('individuals',{ club_id:Number(cid), full_name:r.name, gender:r.gender, seed_rating:r.rating, pin:r.pin });
+      await odrRestPost('individuals',{ club_id:Number(cid), full_name:r.name, gender:r.gender, seed_rating:r.rating, pin:r.pin, dob:r.dob });
       ok++;
     }catch(e){ fail++; failNames.push(r.name); }
   }
@@ -2810,7 +2829,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'ODR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "ODR-LAPTOP MDR v2026.08.15-02 · Masters Doubles Ratings on nae (clubs 1/2/3) · age brackets (younger-partner rule) · DOB in admin · Profiles restructure (Individual Profile / Individual Overall / Divisions) · Division column on ratings+form · tournament Draw&Rounds default · no player PIN.'X & null'). Tournament picker now defaults to 'Select tournament…' with the detail hidden until one is chosen (no silent archived-default). Plus v16 player-picker cache (no dropdown lag), v15 entry-flow live marker + individuals pickers + individual-rating fix, tournament auto-place fix (edge fn deployed). Engine 60/40 doubles derivation UNCHANGED. | SQUASH HANDICAP (display + umpire, no rating effect): fractional/alternating head-start to 11 for the underdog (OPR-parity); computeHandicap squash ladder; fixture + BOTH bracket renderers (koBox and bracketColumnHTML) + rounds-table labels; Rounds-tab notice reworded for squash; live marker resolves + applies the per-game head-start with a tap-to-continue GAME/MATCH banner; entry-flow launch now arms the handicap (fixes 0-0 opener). Engine/submit/recompute UNTOUCHED; handicap events routed via record_fixture_result. · Profile speed + new-player fix: faster load (parallel fetches), new players show full banner + zeroed stats. Look unchanged. · Doubles-only ladder: removed Singles/Doubles toggle (ODR is squash doubles; OSR is the singles fork).";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
+const OPR_VERSION = "ODR-LAPTOP MDR v2026.08.15-05 · Profiles flow per PDF: Individual Profile -> [Ladies|Men] only -> existing search-list (avatars) -> player profile -> BACK returns to the [Ladies|Men] screen. Create Team, Divisions-from-pairs, OTR qualification, DOB admin/bulk, styled buttons retained.'X & null'). Tournament picker now defaults to 'Select tournament…' with the detail hidden until one is chosen (no silent archived-default). Plus v16 player-picker cache (no dropdown lag), v15 entry-flow live marker + individuals pickers + individual-rating fix, tournament auto-place fix (edge fn deployed). Engine 60/40 doubles derivation UNCHANGED. | SQUASH HANDICAP (display + umpire, no rating effect): fractional/alternating head-start to 11 for the underdog (OPR-parity); computeHandicap squash ladder; fixture + BOTH bracket renderers (koBox and bracketColumnHTML) + rounds-table labels; Rounds-tab notice reworded for squash; live marker resolves + applies the per-game head-start with a tap-to-continue GAME/MATCH banner; entry-flow launch now arms the handicap (fixes 0-0 opener). Engine/submit/recompute UNTOUCHED; handicap events routed via record_fixture_result. · Profile speed + new-player fix: faster load (parallel fetches), new players show full banner + zeroed stats. Look unchanged. · Doubles-only ladder: removed Singles/Doubles toggle (ODR is squash doubles; OSR is the singles fork).";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -3126,21 +3145,21 @@ async function loadLadder(type, title) {
       window._doublesRows = data;
       window._doublesCat = cat;
       const ratingHdr = usesCombined ? 'Rating (Comb)' : 'Rating (Wtd)';
-      html = `<table class="ladder-table"><thead><tr><th>Rank</th><th>Pair</th><th>${ratingHdr}</th><th>Level</th><th>M</th><th>Games</th><th>Won</th><th>% Won</th></tr></thead><tbody>`;
+      html = `<table class="ladder-table"><thead><tr><th>Rank</th><th>Pair</th><th>${ratingHdr}</th><th>Level</th><th>M</th><th>Games</th><th>Won</th><th>% Won</th><th>Division</th></tr></thead><tbody>`;
       const MIN_SETS = 12;
       const qualified = [], unqualified = [];
       data.forEach((p,i)=>{ (((p.sets||0) >= MIN_SETS) ? qualified : unqualified).push({p,i}); });
       const pairRow = (p,i,rankCell,rowStyle)=>{
         const rating = usesCombined ? Math.round(p.combined) : Math.round(p.weighted);
         const swp = p.set_win_pct==null?'—':Number(p.set_win_pct).toFixed(1);
-        let h = `<tr class="pair-row" style="cursor:pointer;${rowStyle}" onclick="togglePairMatches(${i})" id="pairrow_${i}"><td>${rankCell}</td><td>${p.p1} & ${p.p2} <span style="color:#B8480A;font-size:10px;">▼</span></td><td>${rating}</td><td>${Number(p.level).toFixed(1)}</td><td>${p.matches==null?'—':p.matches}</td><td>${p.sets}</td><td>${p.sets_won==null?'—':Math.round(p.sets_won)}</td><td>${swp}</td></tr>`;
-        h += `<tr id="pairdetail_${i}" style="display:none;"><td colspan="8" style="background:rgba(211,84,0,.12);padding:0;"><div id="pairdetailinner_${i}" style="padding:10px 14px;font-size:12px;"></div></td></tr>`;
+        let h = `<tr class="pair-row" style="cursor:pointer;${rowStyle}" onclick="togglePairMatches(${i})" id="pairrow_${i}"><td>${rankCell}</td><td>${p.p1} & ${p.p2} <span style="color:#B8480A;font-size:10px;">▼</span></td><td>${rating}</td><td>${Number(p.level).toFixed(1)}</td><td>${p.matches==null?'—':p.matches}</td><td>${p.sets}</td><td>${p.sets_won==null?'—':Math.round(p.sets_won)}</td><td>${swp}</td><td style="color:#D35400;font-weight:800;font-size:12px;">${(typeof pairBracketByNames==='function')?pairBracketByNames(p.p1,p.p2):''}</td></tr>`;
+        h += `<tr id="pairdetail_${i}" style="display:none;"><td colspan="9" style="background:rgba(211,84,0,.12);padding:0;"><div id="pairdetailinner_${i}" style="padding:10px 14px;font-size:12px;"></div></td></tr>`;
         return h;
       };
       let displayRank = 0;
       qualified.forEach(({p,i})=>{ displayRank++; html += pairRow(p,i,rankBadge(displayRank),''); });
       if(unqualified.length){
-        html += `<tr><td colspan="8" style="background:rgba(211,84,0,.08);color:#3a6b5c;font-size:11px;font-style:italic;padding:7px 12px;">Not yet qualified — fewer than ${MIN_SETS} games played together (shown for reference; not ranked)</td></tr>`;
+        html += `<tr><td colspan="9" style="background:rgba(211,84,0,.08);color:#3a6b5c;font-size:11px;font-style:italic;padding:7px 12px;">Not yet qualified — fewer than ${MIN_SETS} games played together (shown for reference; not ranked)</td></tr>`;
         unqualified.forEach(({p,i})=>{ html += pairRow(p,i,'—','opacity:0.55;'); });
       }
       html += '</tbody></table>';
@@ -3154,31 +3173,66 @@ async function loadLadder(type, title) {
 }
 
 // ===== MDR PROFILES (restructured) =====
+function mdrProfileBack(){
+  // PDF page 3: from an open profile, BACK goes to the gender-choice screen
+  // (Individual Profile + Ladies/Men), NOT the list.
+  if(window._mdrCameFrom==='ipList'){ showScreen('mdrProfilesScreen'); mdrIndivProfileGender(); return; }
+  showProfileSearch();
+}
+function mdrSearchBack(){
+  // From the player list, BACK also returns to the gender-choice screen.
+  if(window._mdrCameFrom==='ipList'){ showScreen('mdrProfilesScreen'); mdrIndivProfileGender(); return; }
+  goHome();
+}
 function showMdrProfiles(){ showScreen('mdrProfilesScreen'); document.getElementById('mdrProfilesBody').innerHTML=''; }
 
 // --- Individual Profile: pick gender -> existing per-person profile flow ---
 function mdrIndivProfileGender(){
+  document.getElementById('mdrTab-ip')?.classList.add('on');
+  document.getElementById('mdrTab-io')?.classList.remove('on');
+  document.getElementById('mdrTab-dv')?.classList.remove('on');
+  // STEP 1: gender choice ONLY (no list yet)
   const b=document.getElementById('mdrProfilesBody');
-  b.innerHTML='<div class="btnrow" style="display:flex;gap:8px;flex-wrap:wrap;">'
-    +'<button class="pill" onclick="mdrIndivProfileList(\'F\')">Ladies</button>'
-    +'<button class="pill" onclick="mdrIndivProfileList(\'M\')">Men</button></div>'
-    +'<p style="color:#9a8578;font-size:13px;">Pick a gender, then a player to open their profile.</p>';
+  b.innerHTML='<div class="mdr-pillrow">'
+    +'<button class="mdr-pill" onclick="mdrIPsel(\'F\')">Ladies</button>'
+    +'<button class="mdr-pill" onclick="mdrIPsel(\'M\')">Men</button></div>'
+    +'<p class="mdr-hint">Pick a gender.</p>';
+}
+// STEP 2: open the EXISTING search-list screen, filtered to the chosen gender.
+async function mdrIPsel(g){
+  window._mdrIPgender=g;
+  window._mdrCameFrom='ipList';   // profile + list back-buttons return to the gender screen
+  showScreen('profileSearchScreen');
+  const ps=document.getElementById('playerSearch'); if(ps) ps.value='';
+  try{
+    const inds = await sbGet(`individuals?select=id,full_name,gender,seed_rating&gender=eq.${g}&club_id=eq.${CLUB_ID}&order=full_name.asc`) || [];
+    window._profileIndivs = inds;
+    renderIndivList(inds);
+  }catch(e){ document.getElementById('playerList').innerHTML='<li style="padding:12px;color:#c0392b;">Could not load.</li>'; }
 }
 async function mdrIndivProfileList(g){
   await mdrLoadDob();
   const inds = await sbGet(`individuals?select=id,full_name,gender&gender=eq.${g}&club_id=eq.${CLUB_ID}&order=full_name.asc`) || [];
+  window._profileIndivs = inds;              // so showPartnerships can resolve the id
+  window._mdrCameFrom = 'ipList';            // profile back-button returns to THIS list
   const b=document.getElementById('mdrProfilesBody');
-  b.innerHTML='<ul class="player-list">'+inds.map(p=>`<li class="player-item" onclick="showPartnerships(${p.id})">${p.full_name} <span style="color:#D35400;font-weight:800;font-size:12px;">${indivBracket(p.full_name)}</span></li>`).join('')+'</ul>'
+  b.innerHTML='<div class="mdr-pillrow"><button class="mdr-pill" onclick="mdrIndivProfileGender()">\u2190 Back</button></div>'
+    +'<p class="mdr-hint">'+(g==='F'?'Ladies':'Men')+' \u2014 pick a player.</p>'
+    +'<ul class="player-list">'+inds.map(p=>`<li class="player-item" style="cursor:pointer;" onclick="showPartnerships(${p.id})">${p.full_name} <span style="color:#D35400;font-weight:800;font-size:12px;">${indivBracket(p.full_name)}</span></li>`).join('')+'</ul>'
     + (inds.length?'':'<p style="color:#9a8578;">No players yet.</p>');
 }
 
 // --- Individual Overall: pick gender -> full ranking + Division column ---
 function mdrIndivOverallGender(){
+  document.getElementById('mdrTab-ip')?.classList.remove('on');
+  document.getElementById('mdrTab-io')?.classList.add('on');
+  document.getElementById('mdrTab-dv')?.classList.remove('on');
   const b=document.getElementById('mdrProfilesBody');
-  b.innerHTML='<div class="btnrow" style="display:flex;gap:8px;flex-wrap:wrap;">'
-    +'<button class="pill" onclick="mdrIndivOverall(\'F\')">Ladies</button>'
-    +'<button class="pill" onclick="mdrIndivOverall(\'M\')">Men</button></div><div id="mdrIOtable"></div>';
+  b.innerHTML='<div class="mdr-pillrow">'
+    +'<button class="mdr-pill" onclick="mdrIOsel(this,\'F\')">Ladies</button>'
+    +'<button class="mdr-pill" onclick="mdrIOsel(this,\'M\')">Men</button></div><div id="mdrIOtable"></div>';
 }
+function mdrIOsel(el,g){ document.querySelectorAll('#mdrProfilesBody .mdr-pillrow .mdr-pill').forEach(p=>p.classList.remove('on')); el.classList.add('on'); mdrIndivOverall(g); }
 async function mdrIndivOverall(g){
   await Promise.all([ mdrLoadDob(), (typeof OPR!=='undefined'?OPR.load():Promise.resolve()) ]);
   const inds = await sbGet(`individuals?select=full_name,gender,seed_rating&gender=eq.${g}&club_id=eq.${CLUB_ID}`) || [];
@@ -3192,43 +3246,111 @@ async function mdrIndivOverall(g){
   document.getElementById('mdrIOtable').innerHTML=h;
 }
 
-// --- Divisions: gender -> bracket buttons -> pairs-only table ---
-let _mdrDivGender='M', _mdrDivBracket='all';
+// --- Divisions: gender -> Create Team + bracket buttons -> registered-pairs table ---
+let _mdrDivGender='M', _mdrDivBracket='all', _mdrDivLabel='Men';
 function mdrDivisionsGender(){
+  document.getElementById('mdrTab-ip')?.classList.remove('on');
+  document.getElementById('mdrTab-io')?.classList.remove('on');
+  document.getElementById('mdrTab-dv')?.classList.add('on');
   const b=document.getElementById('mdrProfilesBody');
-  b.innerHTML='<div class="btnrow" style="display:flex;gap:8px;flex-wrap:wrap;">'
-    +'<button class="pill" onclick="mdrDivPick(\'Men\',\'M\')">Men</button>'
-    +'<button class="pill" onclick="mdrDivPick(\'Ladies\',\'L\')">Ladies</button>'
-    +'<button class="pill" onclick="mdrDivPick(\'Mixed\',\'X\')">Mixed</button>'
-    +'<button class="pill" onclick="mdrDivPick(\'All Sorts\',\'AS\')">All Sorts</button></div>'
-    +'<div id="mdrDivBrackets" style="margin-top:8px;"></div><div id="mdrDivTable" style="margin-top:8px;"></div>';
+  b.innerHTML='<div class="mdr-pillrow" id="mdrDivGenderRow">'
+    +'<button class="mdr-pill" onclick="mdrDivPick(\'Men\',\'M\',this)">Men</button>'
+    +'<button class="mdr-pill" onclick="mdrDivPick(\'Ladies\',\'L\',this)">Ladies</button>'
+    +'<button class="mdr-pill" onclick="mdrDivPick(\'Mixed\',\'X\',this)">Mixed</button>'
+    +'<button class="mdr-pill" onclick="mdrDivPick(\'All Sorts\',\'AS\',this)">All Sorts</button></div>'
+    +'<div id="mdrCreateTeamWrap"></div>'
+    +'<div id="mdrDivBrackets"></div><div id="mdrDivTable"></div>';
 }
-function mdrDivPick(label, code){
-  _mdrDivGender=code; _mdrDivBracket='all';
+function mdrDivPick(label, code, el){
+  _mdrDivGender=code; _mdrDivBracket='all'; _mdrDivLabel=label;
+  document.querySelectorAll('#mdrDivGenderRow .mdr-pill').forEach(p=>p.classList.remove('on'));
+  if(el) el.classList.add('on');
+  mdrRenderCreateTeam();
   const bb=document.getElementById('mdrDivBrackets');
-  bb.innerHTML='<div style="display:flex;gap:6px;flex-wrap:wrap;">'+MDR_BRACKETS.map(x=>`<button class="pill" onclick="mdrDivBracket('${x}',this)" style="${x==='all'?'background:#D35400;color:#fff;':''}">${x==='all'?'All':x}</button>`).join('')+'</div>'
-    +'<p style="color:#9a8578;font-size:12px;margin:6px 0;">A pair\'s division = its <b>younger</b> partner\'s age. Pairs only.</p>';
-  mdrRenderDivTable(label);
+  bb.innerHTML='<div class="mdr-brk">'+MDR_BRACKETS.map(x=>`<button class="mdr-pill${x==='all'?' on':''}" onclick="mdrDivBracket('${x}',this)">${x==='all'?'All':x}</button>`).join('')+'</div>'
+    +'<p class="mdr-hint">A pair\'s division = its <b>younger</b> partner\'s age. Pairs only.</p>';
+  mdrRenderDivTable();
 }
 function mdrDivBracket(x, el){
   _mdrDivBracket=x;
-  document.querySelectorAll('#mdrDivBrackets .pill').forEach(p=>{p.style.background='';p.style.color='';});
-  if(el){ el.style.background='#D35400'; el.style.color='#fff'; }
+  document.querySelectorAll('#mdrDivBrackets .mdr-pill').forEach(p=>p.classList.remove('on'));
+  if(el) el.classList.add('on');
   mdrRenderDivTable();
 }
-async function mdrRenderDivTable(labelMaybe){
-  await mdrLoadDob();
-  // category filter: Men/Ladies/Mixed use doubles_results category; All Sorts = its own category.
-  const catMap={'M':"Men's",'L':'Ladies','X':'Mixed','AS':'All Sorts'};
-  const cat=catMap[_mdrDivGender]||"Men's";
-  const rows = await sbGet(`doubles_results?select=p1,p2,combined,weighted,level,sets,sets_won,set_win_pct,rank&category=eq.${encodeURIComponent(cat)}&order=rank.asc&club_id=eq.${CLUB_ID}`) || [];
-  let list = rows.filter(r=>r.p2).map(r=>({ name:`${r.p1} & ${r.p2}`, p1:r.p1, p2:r.p2,
-      rating:(r.combined!=null?r.combined:r.weighted), level:r.level, sets:r.sets, won:r.sets_won, pct:r.set_win_pct,
-      div:pairBracketByNames(r.p1,r.p2) }));
+
+// ---- CREATE TEAM (registers a pair with no match; gender-filtered dropdowns) ----
+async function mdrRenderCreateTeam(){
+  await Promise.all([ mdrLoadDob(), (typeof OPR!=='undefined'?OPR.load():Promise.resolve()) ]);
+  // which individuals can be picked for each slot, per category
+  const g=_mdrDivGender;
+  let filt;
+  if(g==='M') filt=p=>p.gender==='M';
+  else if(g==='L') filt=p=>p.gender==='F';
+  else filt=()=>true;                       // Mixed + All Sorts = everyone
+  const inds=(await sbGet(`individuals?select=full_name,gender&club_id=eq.${CLUB_ID}&order=full_name.asc`)||[]).filter(filt);
+  const opts='<option value="">— select —</option>'+inds.map(p=>`<option value="${p.full_name.replace(/"/g,'&quot;')}">${p.full_name}</option>`).join('');
+  const wrap=document.getElementById('mdrCreateTeamWrap');
+  wrap.innerHTML=`
+    <div style="background:#fdf3ec;border:2px solid rgba(211,84,0,.25);border-radius:14px;padding:14px;margin:6px 0 14px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="background:#D35400;color:#fff;border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;">+</span><b style="color:#B8480A;">Create a team</b></div>
+      <label style="font-size:12px;color:#7a6688;font-weight:700;">Player 1</label>
+      <select id="ctP1" class="ac-field" onchange="mdrCreateTeamPreview()">${opts}</select>
+      <label style="font-size:12px;color:#7a6688;font-weight:700;">Player 2</label>
+      <select id="ctP2" class="ac-field" onchange="mdrCreateTeamPreview()">${opts}</select>
+      <div id="ctPreview" style="background:#fff;border-radius:8px;padding:8px 12px;font-size:13px;color:#7a6688;margin:6px 0;">Pick two players to see the pairing.</div>
+      <button class="ac-btn ac-btn-primary" style="width:100%;" onclick="mdrCreateTeam()">Create team</button>
+      <div id="ctMsg" style="font-size:13px;margin-top:8px;"></div>
+    </div>`;
+}
+function mdrCreateTeamPreview(){
+  const p1=document.getElementById('ctP1').value, p2=document.getElementById('ctP2').value;
+  const el=document.getElementById('ctPreview');
+  if(!p1||!p2){ el.innerHTML='Pick two players to see the pairing.'; return; }
+  if(p1===p2){ el.innerHTML='<span style="color:#c0392b;">A team needs two different players.</span>'; return; }
+  const r1=odrIndivRating(p1), r2=odrIndivRating(p2);
+  const combined=(r1!=null&&r2!=null)?Math.round(Math.max(r1,r2)*0.6+Math.min(r1,r2)*0.4):null;
+  const div=pairBracketByNames(p1,p2);
+  el.innerHTML=`<b>${p1}</b> (${r1!=null?r1:'—'}) &amp; <b>${p2}</b> (${r2!=null?r2:'—'})`
+    +`<br>New pairing · <b style="color:#D35400;">${combined!=null?combined:'—'}</b> · Division <b style="color:#D35400;">${div}</b>`;
+}
+async function mdrCreateTeam(){
+  const p1=document.getElementById('ctP1').value, p2=document.getElementById('ctP2').value;
+  const msg=document.getElementById('ctMsg');
+  if(!p1||!p2){ msg.innerHTML='<span style="color:#c0392b;">Pick two players.</span>'; return; }
+  if(p1===p2){ msg.innerHTML='<span style="color:#c0392b;">A team needs two different players.</span>'; return; }
+  msg.innerHTML='Creating…';
+  try{
+    const name=await odrEnsurePair(p1,p2);   // same dedup as match entry (reverse-order safe)
+    msg.innerHTML='<span style="color:#1e8449;">Team ready: '+name+'</span>';
+    document.getElementById('ctP1').value=''; document.getElementById('ctP2').value='';
+    document.getElementById('ctPreview').innerHTML='Pick two players to see the pairing.';
+    _playersLoaded=false;                     // roster of pairs changed
+    mdrRenderDivTable();                       // refresh the division table to show it
+  }catch(e){ msg.innerHTML='<span style="color:#c0392b;">'+(e.message||e)+'</span>'; }
+}
+
+// ---- DIVISION TABLE: registered pairs from 'players' (no match needed) ----
+async function mdrRenderDivTable(){
+  await Promise.all([ mdrLoadDob(), (typeof OPR!=='undefined'?OPR.load():Promise.resolve()) ]);
+  // all registered pairs (member_a_id not null = a real pair, not a mirrored individual)
+  const pairs = await sbGet(`players?select=name,gender,member_a_id,member_b_id&club_id=eq.${CLUB_ID}&member_a_id=not.is.null&order=name.asc`) || [];
+  const catOf=g=>g==='M'?'M':g==='L'?'L':'X';
+  let list = pairs.filter(p=>{
+    if(_mdrDivGender==='AS') return true;                 // All Sorts = every pair
+    if(_mdrDivGender==='X')  return p.gender==='X';        // Mixed
+    return p.gender===_mdrDivGender;                       // Men / Ladies
+  }).map(p=>{
+    const i=p.name.indexOf(' & ');
+    const a=i>=0?p.name.slice(0,i):p.name, b=i>=0?p.name.slice(i+3):'';
+    const rating = (typeof OPR!=='undefined' && OPR.pairByName) ? OPR.pairByName(p.name) : null;
+    return { name:p.name, rating, div:pairBracketByNames(a,b) };
+  });
   if(_mdrDivBracket!=='all') list=list.filter(x=>x.div===_mdrDivBracket);
-  let h='<table class="ladder-table"><thead><tr><th>Rank</th><th>Pair</th><th>Rating</th><th>Level</th><th>Sets</th><th>Won</th><th>% Won</th></tr></thead><tbody>';
-  if(!list.length) h+='<tr><td colspan="7" style="text-align:center;color:#9a8578;padding:16px;">No pairs in this division yet.</td></tr>';
-  list.forEach((x,i)=>{ h+=`<tr><td>${rankBadge(i+1)}</td><td>${x.name} <span style="color:#D35400;font-weight:800;font-size:12px;">${x.div}</span></td><td>${Math.round(x.rating)}</td><td>${x.level!=null?x.level:(x.rating/200).toFixed(1)}</td><td>${x.sets||0}</td><td>${x.won||0}</td><td>${x.pct!=null?x.pct:'-'}</td></tr>`; });
+  list.sort((a,b)=>(b.rating||0)-(a.rating||0));
+  let h='<table class="ladder-table"><thead><tr><th>Rank</th><th>Pair</th><th>Rating</th><th>Level</th><th>Division</th></tr></thead><tbody>';
+  if(!list.length) h+='<tr><td colspan="5" style="text-align:center;color:#9a8578;padding:16px;">No teams in this division yet — use “Create a team” above.</td></tr>';
+  list.forEach((x,i)=>{ const r=(x.rating!=null?Math.round(x.rating):null);
+    h+=`<tr><td>${rankBadge(i+1)}</td><td>${x.name}</td><td>${r!=null?r:'—'}</td><td>${r!=null?(r/200).toFixed(1):'—'}</td><td style="color:#D35400;font-weight:800;font-size:12px;">${x.div}</td></tr>`; });
   h+='</tbody></table>';
   document.getElementById('mdrDivTable').innerHTML=h;
 }
