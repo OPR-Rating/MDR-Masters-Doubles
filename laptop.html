@@ -2315,6 +2315,9 @@ async function adminLoadMembers(){
 // ODR individual edit/delete (REST; the individuals table is net-new).
 async function odrEditIndividual(id,name,seed,pin,gender,dob){
   const newName=prompt('Full name:',name); if(newName===null) return;
+  let newGender=prompt('Gender (M or F):',(gender||'')); if(newGender===null) return;
+  newGender=(newGender||'').trim().toUpperCase().charAt(0);
+  if(newGender!=='M' && newGender!=='F'){ alert('Gender must be M or F.'); return; }
   const newDob=prompt('Date of Birth (YYYY-MM-DD, blank = none):',dob||''); if(newDob===null) return;
   const newSeed=prompt('Seed rating:',seed); if(newSeed===null) return;
   const newPin=prompt('PIN (blank = none):',pin||''); if(newPin===null) return;
@@ -2326,7 +2329,7 @@ async function odrEditIndividual(id,name,seed,pin,gender,dob){
   if(seedChanged){
     if(!confirm('Changing '+name+'\u2019s seed rating to '+seedNum+' will RE-DERIVE the initial rating of every team '+name+' is part of (60/40 of the two components) and REPLAY all their matches from the new starting point.\n\nThis moves ratings across the board. Use it mainly early on, when a person\u2019s true strength wasn\u2019t known.\n\nContinue?')) return;
   }
-  const patch={ full_name:newName.trim(), seed_rating:seedNum, pin:(newPin.trim()||null), dob:(newDob.trim()||null) };
+  const patch={ full_name:newName.trim(), gender:newGender, seed_rating:seedNum, pin:(newPin.trim()||null), dob:(newDob.trim()||null) };
   try{
     // 1) update the individual (the component)
     await fetch(SB_URL+'/rest/v1/individuals?id=eq.'+id,{ method:'PATCH', headers:{ apikey:SB_ANON, Authorization:'Bearer '+SB_ANON, 'Content-Type':'application/json' }, body:JSON.stringify(patch) });
@@ -2864,7 +2867,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'ODR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "MDR v2026.08.15-28";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
+const OPR_VERSION = "MDR v2026.08.15-30";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -8516,10 +8519,14 @@ async function renderClubLadder(){
         ? '<p class="sub">No teams on the '+cat+' ladder yet. Use the ➕ Enter / Join tab to add a pair.</p>'
         : '<p class="sub">No entries in the '+_b+' age group yet.</p>';
     } else {
-      bodyHTML += '<table><thead><tr><th class="num">#</th><th>Team</th><th class="num"></th></tr></thead><tbody>';
+      // Division column only on the ALL view (mixed age groups); on a specific bracket it's redundant.
+      const _showDiv = ((window._clBracket||'all')==='all');
+      bodyHTML += '<table><thead><tr><th class="num">#</th><th>Team</th>'+(_showDiv?'<th>Div</th>':'')+'<th class="num"></th></tr></thead><tbody>';
       rows.forEach(r=>{
+        const _divCell = _showDiv ? ('<td style="color:#D35400;font-weight:800;font-size:12px;">'+pairBracketByNames(r.p1,r.p2)+'</td>') : '';
         bodyHTML += '<tr><td class="num"><span class="seed'+(r.position===1?' s1':'')+'">'+r.position+'</span></td>'
           + '<td><b>'+clRungName(r)+'</b></td>'
+          + _divCell
           + '<td class="num"><button onclick="clRemove('+r.id+',\''+clRungName(r).replace(/'/g,"\\'")+'\')" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:16px;" title="Remove (admin)">×</button></td></tr>';
       });
       bodyHTML += '</tbody></table>';
@@ -8592,12 +8599,16 @@ function clSetMode(m){ window._clMode = m; renderClubLadder(); }
 let CL_GENDER = {};
 async function clLoadGenders(){
   try{ const rows=await sbGet(`individuals?select=full_name,gender&club_id=eq.${CLUB_ID}`)||[];
-    CL_GENDER={}; rows.forEach(r=>{ if(r.full_name) CL_GENDER[r.full_name]=r.gender; });
+    CL_GENDER={}; rows.forEach(r=>{ if(r.full_name){ CL_GENDER[r.full_name]=r.gender; CL_GENDER[r.full_name.trim().toLowerCase()]=r.gender; } });
   }catch(e){ CL_GENDER={}; }
+}
+function clGenderOf(name){
+  if(name==null) return undefined;
+  return CL_GENDER[name] || CL_GENDER[String(name).trim().toLowerCase()];
 }
 function clDetectCat(a,b,allSorts){
   if(allSorts) return 'All Sorts';
-  const ga=CL_GENDER[a], gb=CL_GENDER[b];
+  const ga=clGenderOf(a), gb=clGenderOf(b);
   if(ga==='M' && gb==='M') return "Men's";
   if(ga==='F' && gb==='F') return 'Ladies';
   if((ga==='M'&&gb==='F')||(ga==='F'&&gb==='M')) return 'Mixed';
