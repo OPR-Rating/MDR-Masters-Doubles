@@ -998,6 +998,7 @@
             <h4>Bulk create pairs (paste)</h4>
             <p style="font-size:12px;color:#7a6688;margin:0 0 8px;">Paste rows of <b>Person A, Person B</b> — one pair per line (just the two individuals' names, comma or tab separated). Names must exactly match registered individuals. The pair's category, 60/40 rating and age division are all derived from the two individuals — nothing else to enter.</p>
             <textarea id="bulkPairText" class="ac-field" style="min-height:120px;font-family:monospace;font-size:12px;" placeholder="Andre Farrell, Bridget Farrell&#10;Andre Farrell, James Howes"></textarea>
+            <label style="display:flex;align-items:center;gap:8px;margin:6px 0 8px;font-size:13px;cursor:pointer;"><input type="checkbox" id="bulkPairAllSorts" style="width:18px;height:18px;"> These are <b>All Sorts</b> teams (otherwise category is auto-set: M+M Men's, F+F Ladies, M+F Mixed)</label>
             <button class="ac-btn ac-btn-primary" style="width:100%;" onclick="odrBulkCreatePairs()">Create all pasted pairs</button>
             <div id="bulkPairMsg" class="ac-msg"></div>
           </div>
@@ -2173,6 +2174,7 @@ async function odrCreatePair(){
 async function odrBulkCreatePairs(){
   const msg=document.getElementById('bulkPairMsg');
   const raw=document.getElementById('bulkPairText').value;
+  const allSorts=!!(document.getElementById('bulkPairAllSorts')||{}).checked;
   const lines=raw.split('\n').map(l=>l.trim()).filter(l=>l.length);
   if(!lines.length){ msg.innerHTML='<span style="color:#c0392b;">Paste some rows first.</span>'; return; }
   const jobs=[], errs=[];
@@ -2185,7 +2187,7 @@ async function odrBulkCreatePairs(){
   msg.innerHTML='Creating '+jobs.length+' pairs…';
   let ok=0, fail=0, failN=[];
   for(const j of jobs){
-    try{ await odrEnsurePair(j.a, j.b); ok++; }   // SAME path as +enter score / Divisions: individual-based, 60/40, dedup reverse-order
+    try{ await odrEnsurePair(j.a, j.b, allSorts?'A':null); ok++; }   // individual-based, 60/40, dedup; All Sorts via tick
     catch(e){ fail++; failN.push(j.a+' & '+j.b+' ('+(e.message||e)+')'); }
   }
   let out='<span style="color:#1e8449;">Created '+ok+' pair'+(ok===1?'':'s')+'.</span>';
@@ -2867,7 +2869,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'ODR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "MDR v2026.08.15-30";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
+const OPR_VERSION = "MDR v2026.08.15-32";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -3459,13 +3461,19 @@ async function mdrRenderDivTable(){
   const catFull=c=> c==='M'?"Men's" : c==='L'?'Ladies' : c==='X'?'Mixed' : 'All Sorts';
   let list = pairs.filter(p=>{
     if(_overall) return true;                              // Overall index = every pair
-    if(_mdrDivGender==='AS') return true;                 // All Sorts = every pair
+    if(_mdrDivGender==='AS') return p.gender==='A';        // All Sorts = only teams registered All Sorts
     if(_mdrDivGender==='X')  return p.gender==='X';        // Mixed
     return p.gender===_mdrDivGender;                       // Men / Ladies
   }).map(p=>{
     const i=p.name.indexOf(' & ');
     const a=i>=0?p.name.slice(0,i):p.name, b=i>=0?p.name.slice(i+3):'';
-    const rating = (typeof OPR!=='undefined' && OPR.pairByName) ? OPR.pairByName(p.name) : null;
+    // Live 60/40 from the two individuals so EVERY registered team shows a rating,
+    // even before any match. Fall back to the match-derived pair rating if present.
+    let rating = (typeof OPR!=='undefined' && OPR.pairByName) ? OPR.pairByName(p.name) : null;
+    if(rating==null && typeof OPR!=='undefined' && OPR.indiv && OPR.w6040){
+      const ra=OPR.indiv(a), rb=OPR.indiv(b);
+      if(ra!=null && rb!=null) rating=Math.round(OPR.w6040(ra,rb));
+    }
     return { name:p.name, rating, div:pairBracketByNames(a,b), cat:catCode(p.gender) };
   });
   if(_mdrDivBracket!=='all') list=list.filter(x=>x.div===_mdrDivBracket);
@@ -4898,7 +4906,7 @@ function renderStep4(){
 
 // ODR auto-birth: given two individual NAMES, return the pair's name, creating the pair
 // (players row, 60/40 birth, category from genders, no pair-PIN) if it doesn't exist yet.
-async function odrEnsurePair(nameA, nameB){
+async function odrEnsurePair(nameA, nameB, catOverride){
   nameA=(nameA||'').trim(); nameB=(nameB||'').trim();
   if(!nameA || !nameB) throw new Error('two players are required per side');
   if(nameA===nameB) throw new Error('a pair needs two different players');
@@ -4920,7 +4928,7 @@ async function odrEnsurePair(nameA, nameB){
   const sa=a.seed_rating, sb=b.seed_rating;
   const init=rhu(Math.max(sa,sb)*0.6 + Math.min(sa,sb)*0.4);
   const ga=a.gender, gb=b.gender;
-  const cat=(ga==='M'&&gb==='M')?'M':(ga==='F'&&gb==='F')?'L':'X';
+  const cat = (catOverride==='A') ? 'A' : ((ga==='M'&&gb==='M')?'M':(ga==='F'&&gb==='F')?'L':'X');
   const ins = await fetch(SB_URL+'/rest/v1/players',{ method:'POST', headers:{ apikey:SB_ANON, Authorization:'Bearer '+SB_ANON, 'Content-Type':'application/json', Prefer:'return=representation' }, body:JSON.stringify({ club_id:CLUB_ID, name:canonName, gender:cat, initial_rating:init, season_initial:init, pin:null, member_a_id:lo, member_b_id:hi }) });
   if(!ins.ok) throw new Error(await ins.text());
   const rows = await ins.json();
