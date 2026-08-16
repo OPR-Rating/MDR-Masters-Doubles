@@ -621,6 +621,10 @@
     <div class="screen-content">
       <div style="background:#D35400;color:#fff;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:15px;font-weight:700;text-align:center;letter-spacing:0.3px;">Overall Ratings &amp; Ladder Standings</div>
       <div style="background:rgba(211,84,0,.08);border:1px solid rgba(211,84,0,.30);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#0d4a38;line-height:1.5;text-align:center;">Overall standings for ALL matches recorded in both Social and Tournament records</div>
+      <div class="ladders-group-title">Club Ladder</div>
+      <div class="ladders-grid one-col">
+        <button class="menu-btn" style="border-color:#F59E0B;box-shadow:0 0 10px rgba(196,224,0,0.35);font-weight:700;" onclick="showScreen('clubLadderScreen')">🪜 Good ’ol Club Ladder</button>
+      </div>
       <div class="ladders-group-title">Pair Ratings</div>
       <div class="ladders-grid">
         <button class="menu-btn" onclick="loadLadder('mens','Men\u2019s Pairs')">Men's Pairs</button>
@@ -638,10 +642,6 @@
       <div class="ladders-group-title">Universal</div>
       <div class="ladders-grid one-col">
         <button class="menu-btn" onclick="loadLadder('universal','Universal Rating')">Universal Rating — all pairs combined</button>
-      </div>
-      <div class="ladders-group-title">Club Ladder</div>
-      <div class="ladders-grid one-col">
-        <button class="menu-btn" style="border-color:#F59E0B;box-shadow:0 0 10px rgba(196,224,0,0.35);font-weight:700;" onclick="showScreen('clubLadderScreen')">🪜 Good ’ol Club Ladder</button>
       </div>
       <div class="ladders-group-title">Form</div>
       <div class="ladders-grid one-col">
@@ -2863,7 +2863,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'ODR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "ODR-LAPTOP MDR v2026.08.15-22 · Divisions: new Overall index (all teams across categories with a Cat column M/L/X/A, read-only, no Create Team). Division tables now wrapped for fit-width/scroll on mobile so none spill. Club Ladder single category row retained.'X & null'). Tournament picker now defaults to 'Select tournament…' with the detail hidden until one is chosen (no silent archived-default). Plus v16 player-picker cache (no dropdown lag), v15 entry-flow live marker + individuals pickers + individual-rating fix, tournament auto-place fix (edge fn deployed). Engine 60/40 doubles derivation UNCHANGED. | SQUASH HANDICAP (display + umpire, no rating effect): fractional/alternating head-start to 11 for the underdog (OPR-parity); computeHandicap squash ladder; fixture + BOTH bracket renderers (koBox and bracketColumnHTML) + rounds-table labels; Rounds-tab notice reworded for squash; live marker resolves + applies the per-game head-start with a tap-to-continue GAME/MATCH banner; entry-flow launch now arms the handicap (fixes 0-0 opener). Engine/submit/recompute UNTOUCHED; handicap events routed via record_fixture_result. · Profile speed + new-player fix: faster load (parallel fetches), new players show full banner + zeroed stats. Look unchanged. · Doubles-only ladder: removed Singles/Doubles toggle (ODR is squash doubles; OSR is the singles fork).";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
+const OPR_VERSION = "ODR-LAPTOP MDR v2026.08.15-23 · Club Ladder button moved above Pair Ratings; ladder buttons swapped to [View Ladders][+ Join Ladder]; JOIN picker now shows ALL names (both genders) so gender auto-detect actually works (All Sorts tick kept). Overall Divisions index retained.'X & null'). Tournament picker now defaults to 'Select tournament…' with the detail hidden until one is chosen (no silent archived-default). Plus v16 player-picker cache (no dropdown lag), v15 entry-flow live marker + individuals pickers + individual-rating fix, tournament auto-place fix (edge fn deployed). Engine 60/40 doubles derivation UNCHANGED. | SQUASH HANDICAP (display + umpire, no rating effect): fractional/alternating head-start to 11 for the underdog (OPR-parity); computeHandicap squash ladder; fixture + BOTH bracket renderers (koBox and bracketColumnHTML) + rounds-table labels; Rounds-tab notice reworded for squash; live marker resolves + applies the per-game head-start with a tap-to-continue GAME/MATCH banner; entry-flow launch now arms the handicap (fixes 0-0 opener). Engine/submit/recompute UNTOUCHED; handicap events routed via record_fixture_result. · Profile speed + new-player fix: faster load (parallel fetches), new players show full banner + zeroed stats. Look unchanged. · Doubles-only ladder: removed Singles/Doubles toggle (ODR is squash doubles; OSR is the singles fork).";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -8488,8 +8488,8 @@ async function renderClubLadder(){
   // TWO BIG PRIMARY BUTTONS: [+ Join Ladder] [View Ladders]
   const _mode = window._clMode || 'view';
   let nav = '<div class="mdr-pillrow mdr-even" style="margin:8px 0 14px;">'
-    + '<button class="mdr-pill'+(_mode==='join'?' on':'')+'" style="font-size:16px;padding:16px 0;" onclick="clSetMode(\'join\')">+ Join Ladder</button>'
     + '<button class="mdr-pill'+(_mode==='view'?' on':'')+'" style="font-size:16px;padding:16px 0;" onclick="clSetMode(\'view\')">View Ladders</button>'
+    + '<button class="mdr-pill'+(_mode==='join'?' on':'')+'" style="font-size:16px;padding:16px 0;" onclick="clSetMode(\'join\')">+ Join Ladder</button>'
     + '</div>';
 
   // In JOIN mode: no category/bracket pills (entry is universal, auto-sorted).
@@ -8700,7 +8700,11 @@ function clPickName(which){
   const ladies = avail.filter(p=>p.gender==='F').map(p=>p.name);
   const all = avail.map(p=>p.name);
   let list;
-  if(CL_CAT==="Men's" || CL_CAT==="Men's Singles"){ list=men; }
+  // JOIN mode is UNIVERSAL: show ALL names so any team can be entered; the category is
+  // auto-detected from the two players' genders (with the All Sorts tick as override).
+  if((window._clMode||'view')==='join'){
+    list = all;
+  } else if(CL_CAT==="Men's" || CL_CAT==="Men's Singles"){ list=men; }
   else if(CL_CAT==='Ladies' || CL_CAT==='Ladies Singles'){ list=ladies; }
   else if(CL_CAT==='Mixed'){
     const partnerIsMan = players.some(p=>p.name===otherVal && p.gender==='M');
