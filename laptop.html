@@ -556,7 +556,8 @@
 .mdr-pill:hover{border-color:#D35400;}
 .mdr-pill.on{background:linear-gradient(135deg,#D35400,#B8480A);color:#fff;border-color:#D35400;}
 .mdr-brk{display:flex;gap:7px;flex-wrap:wrap;margin:4px 0 12px;}
-.mdr-brk .mdr-pill{min-width:56px;padding:9px 14px;font-size:14px;}
+.mdr-brk{gap:6px;}
+.mdr-brk .mdr-pill{flex:0 0 calc(16.666% - 5px);min-width:0;padding:9px 4px;font-size:13px;text-align:center;box-sizing:border-box;}
 .mdr-hint{color:#9a8578;font-size:13px;margin:6px 0 12px;}
 .mdr-pillrow.mdr-even{gap:8px;}
 .mdr-pillrow.mdr-even .mdr-pill{flex:1 1 0;min-width:0;padding-left:0;padding-right:0;}
@@ -2863,7 +2864,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'ODR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "ODR-LAPTOP MDR v2026.08.15-23 · Club Ladder button moved above Pair Ratings; ladder buttons swapped to [View Ladders][+ Join Ladder]; JOIN picker now shows ALL names (both genders) so gender auto-detect actually works (All Sorts tick kept). Overall Divisions index retained.'X & null'). Tournament picker now defaults to 'Select tournament…' with the detail hidden until one is chosen (no silent archived-default). Plus v16 player-picker cache (no dropdown lag), v15 entry-flow live marker + individuals pickers + individual-rating fix, tournament auto-place fix (edge fn deployed). Engine 60/40 doubles derivation UNCHANGED. | SQUASH HANDICAP (display + umpire, no rating effect): fractional/alternating head-start to 11 for the underdog (OPR-parity); computeHandicap squash ladder; fixture + BOTH bracket renderers (koBox and bracketColumnHTML) + rounds-table labels; Rounds-tab notice reworded for squash; live marker resolves + applies the per-game head-start with a tap-to-continue GAME/MATCH banner; entry-flow launch now arms the handicap (fixes 0-0 opener). Engine/submit/recompute UNTOUCHED; handicap events routed via record_fixture_result. · Profile speed + new-player fix: faster load (parallel fetches), new players show full banner + zeroed stats. Look unchanged. · Doubles-only ladder: removed Singles/Doubles toggle (ODR is squash doubles; OSR is the singles fork).";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
+const OPR_VERSION = "MDR v2026.08.15-28";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -5622,7 +5623,7 @@ function pairBracketFromName(pairName){
   const i=pairName.indexOf(' & ');
   return pairBracketByNames(pairName.slice(0,i), pairName.slice(i+3));
 }
-const MDR_BRACKETS=['all','35+','40+','45+','50+','55+','60+','65+','70+','75+','80+'];
+const MDR_BRACKETS=['all','Open','35+','40+','45+','50+','55+','60+','65+','70+','75+','80+'];
 
 function odrIndivRating(name){ const v=OPR.indiv(name); return (v==null?null:Math.round(v)); }
 async function odrBuildIndivRatings(){
@@ -8524,6 +8525,33 @@ async function renderClubLadder(){
       bodyHTML += '</tbody></table>';
     }
     bodyHTML += '</div>';
+    // (The standings table above already lists every team with remove buttons, so no
+    // separate "Teams entered" card is needed here.)
+    const spillRows = window._clRowsAll || rows;
+
+    // Item 2: activation card — locks after first activation (with guarded override)
+    if(!activated){
+      bodyHTML += '<div class="card"><h2>Activate the ladder</h2>'
+        + '<p class="sub">One-time: sets the '+cat+' ladder order by combined rating (strongest at the top). After activation, the ladder moves only on challenge results.</p>'
+        + '<div style="display:flex;gap:8px;"><input id="clPin" type="password" placeholder="Admin PIN" style="flex:1;padding:10px;border:1.5px solid #B8480A;border-radius:8px;font-size:15px;">'
+        + '<button class="ac-btn ac-btn-primary" onclick="clActivate(false)">Activate ladder</button></div>'
+        + '<div id="clSeedMsg" class="sub" style="margin-top:8px;"></div>';
+      // Clear-all option before activation (wipe all entered teams in one go)
+      if(spillRows.length){
+        bodyHTML += '<div style="margin-top:12px;border-top:1px dashed #e6b0aa;padding-top:10px;">'
+          + '<p class="sub" style="margin:0 0 6px;">Want to start over? This clears all '+spillRows.length+' entered '+cat+' team(s) before activation.</p>'
+          + '<button class="ac-btn ac-btn-danger" style="width:100%;background:#7b241c;" onclick="clTotalReset()">⚠️ Clear all entered teams</button></div>';
+      }
+      bodyHTML += '</div>';
+    } else {
+      bodyHTML += '<div class="card" style="border:1px dashed #e6b0aa;"><h2 style="color:#922;">Admin override</h2>'
+        + '<p class="sub">This ladder is already activated. <b>Re-activate</b> reshuffles all positions back to rating order (keeps the teams, stays active). <b>Total reset</b> wipes every team and returns this ladder to a blank, not-activated state.</p>'
+        + '<div style="display:flex;gap:8px;"><input id="clPin" type="password" placeholder="Admin PIN" style="flex:1;padding:10px;border:1.5px solid #c0392b;border-radius:8px;font-size:15px;">'
+        + '<button class="ac-btn ac-btn-danger" onclick="clActivate(true)">Re-activate (reset order)</button></div>'
+        + '<div style="margin-top:10px;border-top:1px dashed #e6b0aa;padding-top:10px;">'
+        + '<button class="ac-btn ac-btn-danger" style="width:100%;background:#7b241c;" onclick="clTotalReset()">⚠️ Total reset — wipe all teams &amp; deactivate</button></div>'
+        + '<div id="clSeedMsg" class="sub" style="margin-top:8px;"></div></div>';
+    }
   } else {
     // ENTER / JOIN tab — Item 3: type-to-search pickers; Item 5: join at bottom
     const joinHint = activated
@@ -8552,46 +8580,6 @@ async function renderClubLadder(){
         + '</div></div>'))
       + '</div>';
 
-    // Show the teams already entered, right here on the Enter/Join tab, so you can
-    // see who has joined before activating (spill list).
-    bodyHTML += '<div class="card"><h2>Teams entered <span class="tm-divtag">'+cat+'</span> <span style="font-size:12px;color:#888;font-weight:400;">('+rows.length+')</span></h2>';
-    if(!rows.length){
-      bodyHTML += '<p class="sub">No teams entered yet. Add pairs above — they\u2019ll appear here as you go.</p>';
-    } else {
-      bodyHTML += '<table><thead><tr><th class="num">'+(activated?'#':'')+'</th><th>Team</th><th class="num"></th></tr></thead><tbody>';
-      rows.forEach((r,i)=>{
-        bodyHTML += '<tr><td class="num">'+(activated?('<span class="seed'+(r.position===1?' s1':'')+'">'+r.position+'</span>'):(i+1))+'</td>'
-          + '<td><b>'+clRungName(r)+'</b></td>'
-          + '<td class="num"><button onclick="clRemove('+r.id+',\''+clRungName(r).replace(/'/g,"\\'")+'\')" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:16px;" title="Remove">×</button></td></tr>';
-      });
-      bodyHTML += '</tbody></table>';
-      if(!activated) bodyHTML += '<p class="sub" style="margin-top:8px;">Order shown is entry order. On activation, teams are ranked by combined rating.</p>';
-    }
-    bodyHTML += '</div>';
-
-    // Item 2: activation card — locks after first activation (with guarded override)
-    if(!activated){
-      bodyHTML += '<div class="card"><h2>Activate the ladder</h2>'
-        + '<p class="sub">One-time: sets the '+cat+' ladder order by combined rating (strongest at the top). After activation, the ladder moves only on challenge results.</p>'
-        + '<div style="display:flex;gap:8px;"><input id="clPin" type="password" placeholder="Admin PIN" style="flex:1;padding:10px;border:1.5px solid #B8480A;border-radius:8px;font-size:15px;">'
-        + '<button class="ac-btn ac-btn-primary" onclick="clActivate(false)">Activate ladder</button></div>'
-        + '<div id="clSeedMsg" class="sub" style="margin-top:8px;"></div>';
-      // Clear-all option before activation (wipe all entered teams in one go)
-      if(rows.length){
-        bodyHTML += '<div style="margin-top:12px;border-top:1px dashed #e6b0aa;padding-top:10px;">'
-          + '<p class="sub" style="margin:0 0 6px;">Want to start over? This clears all '+rows.length+' entered '+cat+' team(s) before activation.</p>'
-          + '<button class="ac-btn ac-btn-danger" style="width:100%;background:#7b241c;" onclick="clTotalReset()">⚠️ Clear all entered teams</button></div>';
-      }
-      bodyHTML += '</div>';
-    } else {
-      bodyHTML += '<div class="card" style="border:1px dashed #e6b0aa;"><h2 style="color:#922;">Admin override</h2>'
-        + '<p class="sub">This ladder is already activated. <b>Re-activate</b> reshuffles all positions back to rating order (keeps the teams, stays active). <b>Total reset</b> wipes every team and returns this ladder to a blank, not-activated state.</p>'
-        + '<div style="display:flex;gap:8px;"><input id="clPin" type="password" placeholder="Admin PIN" style="flex:1;padding:10px;border:1.5px solid #c0392b;border-radius:8px;font-size:15px;">'
-        + '<button class="ac-btn ac-btn-danger" onclick="clActivate(true)">Re-activate (reset order)</button></div>'
-        + '<div style="margin-top:10px;border-top:1px dashed #e6b0aa;padding-top:10px;">'
-        + '<button class="ac-btn ac-btn-danger" style="width:100%;background:#7b241c;" onclick="clTotalReset()">⚠️ Total reset — wipe all teams &amp; deactivate</button></div>'
-        + '<div id="clSeedMsg" class="sub" style="margin-top:8px;"></div></div>';
-    }
   }
 
   body.innerHTML = nav + bodyHTML;   // nav already includes the category + bracket bars (view mode)
