@@ -230,6 +230,7 @@
   .odr-pair-row { display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid rgba(211,84,0,.12); }
   .odr-cat-pill { display:inline-block; padding:2px 8px; border-radius:99px; font-size:11px; font-weight:700; }
   .odr-cat-M { background:#e3edff; color:#2148a0; } .odr-cat-L { background:#ffe6f0; color:#a02166; } .odr-cat-X { background:#e9f7e5; color:#2a7d1f; }
+.odr-cat-A { background:#fff0dd; color:#B8480A; }
   @keyframes acFade { from{opacity:0;transform:translateY(4px);} to{opacity:1;transform:none;} }
   .ac-card { background:#fff; border:1px solid rgba(211,84,0,.16); border-radius:12px; padding:16px; margin-bottom:14px; }
   .ac-card h4 { font-size:12px; text-transform:uppercase; letter-spacing:1px; color:#5aa98d; margin-bottom:12px; font-weight:800; }
@@ -2056,7 +2057,7 @@ let ODR_INDIV=[], ODR_PAIRS=[], odrSelA=null, odrSelB=null, odrSearchWired=false
 function odrRhu(x){ return Math.floor(x+0.5); }
 function odrWeighted(a,b){ return odrRhu(Math.max(a,b)*0.6 + Math.min(a,b)*0.4); }
 function odrPairCat(gA,gB){ if(gA==='M'&&gB==='M')return'M'; if(gA==='F'&&gB==='F')return'L'; return'X'; }
-function odrCatLabel(c){ return c==='M'?"Men's":c==='L'?'Ladies':'Mixed'; }
+function odrCatLabel(c){ return c==='M'?"Men's":c==='L'?'Ladies':c==='A'?'All Sorts':'Mixed'; }
 function odrPairName(nA,nB){ return [nA,nB].sort(function(x,y){return x.localeCompare(y);}).join(' & '); }
 function odrCid(){ return Number(document.getElementById('adminClubSelect').value)||1; }
 
@@ -2869,7 +2870,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'ODR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "MDR v2026.08.15-32";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
+const OPR_VERSION = "MDR v2026.08.15-33";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -4921,8 +4922,16 @@ async function odrEnsurePair(nameA, nameB, catOverride){
   // already exists? Match the pair whichever ORDER its members are stored — an older row may
   // have member_a_id/member_b_id swapped (e.g. 110/94 vs our 94/110). Checking only lo,hi would
   // miss it and birth a DUPLICATE pair row. This or() matches both orders.
-  const existing = await sbGet(`players?select=name&club_id=eq.${CLUB_ID}&or=(and(member_a_id.eq.${lo},member_b_id.eq.${hi}),and(member_a_id.eq.${hi},member_b_id.eq.${lo}))&limit=1`);
-  if(existing && existing.length) return existing[0].name;
+  const existing = await sbGet(`players?select=id,name,gender&club_id=eq.${CLUB_ID}&or=(and(member_a_id.eq.${lo},member_b_id.eq.${hi}),and(member_a_id.eq.${hi},member_b_id.eq.${lo}))&limit=1`);
+  if(existing && existing.length){
+    const ex=existing[0];
+    // If an explicit category override is given and differs, reclassify the existing pair.
+    if(catOverride && ex.gender!==catOverride){
+      await fetch(SB_URL+'/rest/v1/players?id=eq.'+ex.id,{ method:'PATCH', headers:{ apikey:SB_ANON, Authorization:'Bearer '+SB_ANON, 'Content-Type':'application/json' }, body:JSON.stringify({ gender:catOverride }) });
+      await fetch(SB_URL+'/rest/v1/player_results?player_id=eq.'+ex.id,{ method:'PATCH', headers:{ apikey:SB_ANON, Authorization:'Bearer '+SB_ANON, 'Content-Type':'application/json' }, body:JSON.stringify({ gender:catOverride }) });
+    }
+    return ex.name;
+  }
   // birth it: 60/40, category from genders
   const rhu=x=>Math.floor(x+0.5);
   const sa=a.seed_rating, sb=b.seed_rating;
