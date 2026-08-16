@@ -639,16 +639,6 @@
       <div class="ladders-grid one-col">
         <button class="menu-btn" onclick="loadLadder('universal','Universal Rating')">Universal Rating — all pairs combined</button>
       </div>
-      <div class="ladders-group-title">Register Teams</div>
-      <div style="padding:0 2px 8px;">
-        <button class="mdr-pill" style="width:100%;" onclick="mdrToggleLadderBulk()"><span id="ladBulkTxt">+ Bulk register teams</span></button>
-        <div id="ladBulkPanel" style="display:none;background:#fdf3ec;border:2px solid rgba(211,84,0,.25);border-radius:14px;padding:14px;margin-top:10px;">
-          <p style="font-size:12px;color:#7a6688;margin:0 0 8px;">Paste rows of <b>Person A, Person B</b> — one team per line. Names must match registered individuals. Each team is created and auto-sorted into <b>All</b> and its <b>age bracket</b> (younger partner). Category &amp; 60/40 rating computed automatically.</p>
-          <textarea id="ladBulkText" class="ac-field" style="min-height:120px;font-family:monospace;font-size:12px;" placeholder="Andre Farrell, James Howes&#10;Henry Jian, Jeff Tseng"></textarea>
-          <button class="ac-btn ac-btn-primary" style="width:100%;" onclick="mdrLadderBulkCreate()">Create all teams</button>
-          <div id="ladBulkMsg" class="ac-msg" style="font-size:13px;margin-top:8px;"></div>
-        </div>
-      </div>
       <div class="ladders-group-title">Club Ladder</div>
       <div class="ladders-grid one-col">
         <button class="menu-btn" style="border-color:#F59E0B;box-shadow:0 0 10px rgba(196,224,0,0.35);font-weight:700;" onclick="showScreen('clubLadderScreen')">🪜 Good ’ol Club Ladder</button>
@@ -1725,6 +1715,8 @@ function mkSetupEventChanged(ev){
   ev=(ev||'').trim();
   MK.event=ev;
   MK.handicap = !!(ev && ev!=='Social' && ev!=='Ladder Match' && window._mkEventHc && window._mkEventHc[ev]===true);
+  // Ladder matches are ALWAYS best of 5 (first to 3 games).
+  if(ev==='Ladder Match'){ MK.fmt=5; }
   const hadLock = !!(MK.eventLocked && MK.eventLocked.cat);
   MK.eventLocked = { fmt:false, cat:false, catVal:null, fmtVal:null };
   let needsRerender = hadLock;   // if we HAD a lock, we must re-render to clear it
@@ -2871,7 +2863,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'ODR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "ODR-LAPTOP MDR v2026.08.15-13 · Ladder age brackets: every pairs ladder gets an All/35+..80+ pill bar filtering in place; bulk-register-teams box in the Ladder section (paste Person A, Person B -> auto-sorted into All + age bracket via odrEnsurePair).'X & null'). Tournament picker now defaults to 'Select tournament…' with the detail hidden until one is chosen (no silent archived-default). Plus v16 player-picker cache (no dropdown lag), v15 entry-flow live marker + individuals pickers + individual-rating fix, tournament auto-place fix (edge fn deployed). Engine 60/40 doubles derivation UNCHANGED. | SQUASH HANDICAP (display + umpire, no rating effect): fractional/alternating head-start to 11 for the underdog (OPR-parity); computeHandicap squash ladder; fixture + BOTH bracket renderers (koBox and bracketColumnHTML) + rounds-table labels; Rounds-tab notice reworded for squash; live marker resolves + applies the per-game head-start with a tap-to-continue GAME/MATCH banner; entry-flow launch now arms the handicap (fixes 0-0 opener). Engine/submit/recompute UNTOUCHED; handicap events routed via record_fixture_result. · Profile speed + new-player fix: faster load (parallel fetches), new players show full banner + zeroed stats. Look unchanged. · Doubles-only ladder: removed Singles/Doubles toggle (ODR is squash doubles; OSR is the singles fork).";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
+const OPR_VERSION = "ODR-LAPTOP MDR v2026.08.15-16 · Ladder matches now best of 5 (first to 3) — text fixed and format locked to 5 when Ladder Match is selected. Club Ladder = Ladder + Enter/Join tabs (single entry point). No edge-function change needed (best_of is passed through; ladder result records winner/loser only).'X & null'). Tournament picker now defaults to 'Select tournament…' with the detail hidden until one is chosen (no silent archived-default). Plus v16 player-picker cache (no dropdown lag), v15 entry-flow live marker + individuals pickers + individual-rating fix, tournament auto-place fix (edge fn deployed). Engine 60/40 doubles derivation UNCHANGED. | SQUASH HANDICAP (display + umpire, no rating effect): fractional/alternating head-start to 11 for the underdog (OPR-parity); computeHandicap squash ladder; fixture + BOTH bracket renderers (koBox and bracketColumnHTML) + rounds-table labels; Rounds-tab notice reworded for squash; live marker resolves + applies the per-game head-start with a tap-to-continue GAME/MATCH banner; entry-flow launch now arms the handicap (fixes 0-0 opener). Engine/submit/recompute UNTOUCHED; handicap events routed via record_fixture_result. · Profile speed + new-player fix: faster load (parallel fetches), new players show full banner + zeroed stats. Look unchanged. · Doubles-only ladder: removed Singles/Doubles toggle (ODR is squash doubles; OSR is the singles fork).";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -8425,7 +8417,12 @@ let CL_TAB = 'ladder';  // 'ladder' or 'enter'
 async function renderClubLadder(){
   const body = document.getElementById('clBody');
   const cat = CL_CAT;
-  const rows = await sbGet(`club_ladder?select=*&club_id=eq.${CLUB_ID}&category=eq.${encodeURIComponent(cat)}&order=position.asc`) || [];
+  let rows = await sbGet(`club_ladder?select=*&club_id=eq.${CLUB_ID}&category=eq.${encodeURIComponent(cat)}&order=position.asc`) || [];
+  // AGE BRACKET (masters): teams are fixed; bracket is computed from their names' DOBs.
+  if(typeof mdrLoadDob==='function' && Object.keys(MDR_DOB).length===0){ try{ await mdrLoadDob(); }catch(e){} }
+  window._clRowsAll = rows;
+  const _clb = window._clBracket || 'all';
+  if(_clb!=='all'){ rows = rows.filter(r=> pairBracketByNames(r.p1, r.p2)===_clb ); }
   window._clRows = rows;
   // activation state for this category
   let activated = false;
@@ -8446,7 +8443,11 @@ async function renderClubLadder(){
   let divBar = '<div class="tm-divbar cl-divbar">';
   divs.forEach(d=>{ divBar += '<button class="'+(d===cat?'active':'')+'" onclick="clPick(\''+d.replace(/'/g,"\\'")+'\')">'+clDivLabel(d)+'</button>'; });
   divBar += '</div>';
-  divBar = fmtBar + divBar;
+  // age-bracket pills (All / 35+ .. 80+) — teams challenge within their bracket
+  let brkBar = '<div class="tm-divbar cl-divbar" style="margin-top:6px;">';
+  MDR_BRACKETS.forEach(x=>{ brkBar += '<button class="'+((window._clBracket||'all')===x?'active':'')+'" onclick="clPickBracket(\''+x+'\')">'+(x==='all'?'All':x)+'</button>'; });
+  brkBar += '</div>';
+  divBar = fmtBar + divBar + brkBar;
 
 
   // tab nav (Ladder | Enter)
@@ -8462,7 +8463,7 @@ async function renderClubLadder(){
       + '<h2 style="font-size:14px;">How the Club Ladder works</h2>'
       + '<p class="sub" style="margin:0;line-height:1.6;">The ladder works on a <b>challenge basis only</b>. Ratings are used <b>once</b> — to set the opening order when the ladder is activated. After that, ratings no longer apply and teams move only by results. '
       + 'A challenger may challenge <b>any team above them</b>. If the challenger <b>wins</b>, they move into the challenged team\u2019s spot and everyone in between moves down one. If the challenger <b>loses</b>, all teams stay where they are. '
-      + 'All ladder matches are <b>best of 3 games</b>.</p></div>';
+      + 'All ladder matches are <b>best of 5 games</b> (first to 3).</p></div>';
 
     bodyHTML = explainer + '<div class="card"><h2>'+cat+' Ladder <span class="tm-divtag">'+cat+'</span>'
       + (activated ? ' <span style="font-size:10px;background:#1e8449;color:#fff;padding:2px 7px;border-radius:8px;vertical-align:middle;">ACTIVE</span>' : ' <span style="font-size:10px;background:#b9770e;color:#fff;padding:2px 7px;border-radius:8px;vertical-align:middle;">NOT ACTIVATED</span>')
@@ -8494,7 +8495,17 @@ async function renderClubLadder(){
         + '<input type="hidden" id="clP2">'
         + '<button type="button" class="name-pick-btn" id="clP2btn" onclick="clPickName(2)">— select —</button>'))
       + '<button class="ac-btn ac-btn-green" style="width:100%;margin-top:6px;" onclick="clJoin()">'+(singles?'Add player to ladder':'Add pair to ladder')+'</button>'
-      + '<div id="clMsg" style="margin-top:10px;font-size:13px;"></div></div>';
+      + '<div id="clMsg" style="margin-top:10px;font-size:13px;"></div>'
+      + (singles ? '' : (
+          '<div style="margin-top:14px;border-top:1px dashed rgba(211,84,0,.3);padding-top:12px;">'
+        + '<button class="mdr-pill" style="width:100%;" onclick="clToggleBulk()"><span id="clBulkTxt">+ Bulk add teams to this ladder</span></button>'
+        + '<div id="clBulkPanel" style="display:none;margin-top:10px;">'
+        + '<p class="sub" style="margin:0 0 8px;">Paste rows of <b>Person A, Person B</b> — one team per line, for the <b>'+clDivLabel(cat)+'</b> ladder. Names must match registered individuals. Each team joins the ladder and auto-sorts into <b>All</b> + its <b>age bracket</b> (younger partner).</p>'
+        + '<textarea id="clBulkText" class="ac-field" style="min-height:110px;font-family:monospace;font-size:12px;" placeholder="Andre Farrell, James Howes&#10;Henry Jian, Jeff Tseng"></textarea>'
+        + '<button class="ac-btn ac-btn-green" style="width:100%;" onclick="clBulkJoin()">Add all teams to '+clDivLabel(cat)+' ladder</button>'
+        + '<div id="clBulkMsg" style="margin-top:8px;font-size:13px;"></div>'
+        + '</div></div>'))
+      + '</div>';
 
     // Show the teams already entered, right here on the Enter/Join tab, so you can
     // see who has joined before activating (spill list).
@@ -8543,7 +8554,37 @@ async function renderClubLadder(){
 }
 
 function clSetTab(t){ CL_TAB = t; renderClubLadder(); }
-function clPick(d){ CL_CAT = d; CL_TAB='ladder'; renderClubLadder(); }
+function clPick(d){ CL_CAT = d; CL_TAB='ladder'; window._clBracket='all'; renderClubLadder(); }
+function clPickBracket(x){ window._clBracket = x; renderClubLadder(); }
+function clToggleBulk(){
+  const p=document.getElementById('clBulkPanel'), t=document.getElementById('clBulkTxt');
+  if(!p) return; const open=p.style.display!=='none';
+  p.style.display=open?'none':'block'; if(t) t.textContent=open?'+ Bulk add teams to this ladder':'\u2212 Hide';
+}
+async function clBulkJoin(){
+  const msg=document.getElementById('clBulkMsg');
+  const raw=document.getElementById('clBulkText').value;
+  const lines=raw.split('\n').map(l=>l.trim()).filter(l=>l.length);
+  if(!lines.length){ msg.innerHTML='<span style="color:#c0392b;">Paste some rows first.</span>'; return; }
+  const jobs=[], errs=[];
+  lines.forEach((ln,i)=>{ const parts=ln.split(/\t|,/).map(p=>p.trim()).filter(p=>p!==''); if(parts.length<2){ errs.push('Line '+(i+1)+': need Person A, Person B.'); return; } jobs.push({p1:parts[0],p2:parts[1]}); });
+  if(errs.length){ msg.innerHTML='<span style="color:#c0392b;">'+errs.join('<br>')+'</span>'; return; }
+  msg.innerHTML='Adding '+jobs.length+' teams to the '+clDivLabel(CL_CAT)+' ladder…';
+  let ok=0, fail=0, failN=[];
+  for(const j of jobs){
+    try{
+      const r=await fetch(SB_URL+'/functions/v1/ladder',{method:'POST',
+        headers:{apikey:SB_ANON,Authorization:'Bearer '+SB_ANON,'Content-Type':'application/json'},
+        body:JSON.stringify({action:'join_ladder',club_id:CLUB_ID,category:CL_CAT,p1:j.p1,p2:j.p2})});
+      const jr=await r.json().catch(()=>({}));
+      if(jr.ok) ok++; else { fail++; failN.push(j.p1+' & '+j.p2+' ('+(jr.error||'failed')+')'); }
+    }catch(e){ fail++; failN.push(j.p1+' & '+j.p2+' ('+(e.message||e)+')'); }
+  }
+  let out='<span style="color:#1e8449;">Added '+ok+' team'+(ok===1?'':'s')+' to the ladder. They appear in All + their age bracket.</span>';
+  if(fail) out+=' <span style="color:#c0392b;">'+fail+' failed:<br>'+failN.join('<br>')+'</span>';
+  msg.innerHTML=out;
+  if(ok){ document.getElementById('clBulkText').value=''; renderClubLadder(); }
+}
 // Switch the top-level format; jump to the first division of that format.
 function clSetFormat(f){
   CL_FORMAT = f;
