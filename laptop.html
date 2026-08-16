@@ -2863,7 +2863,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'ODR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "ODR-LAPTOP MDR v2026.08.15-18 · Club Ladder redesigned: two big buttons [+ Join Ladder] [View Ladders]. Join is universal (auto-detects Men/Ladies/Mixed from gender; All Sorts via tick) for single + bulk. View shows category + age-group pills + standings. Ladder best-of-5.'X & null'). Tournament picker now defaults to 'Select tournament…' with the detail hidden until one is chosen (no silent archived-default). Plus v16 player-picker cache (no dropdown lag), v15 entry-flow live marker + individuals pickers + individual-rating fix, tournament auto-place fix (edge fn deployed). Engine 60/40 doubles derivation UNCHANGED. | SQUASH HANDICAP (display + umpire, no rating effect): fractional/alternating head-start to 11 for the underdog (OPR-parity); computeHandicap squash ladder; fixture + BOTH bracket renderers (koBox and bracketColumnHTML) + rounds-table labels; Rounds-tab notice reworded for squash; live marker resolves + applies the per-game head-start with a tap-to-continue GAME/MATCH banner; entry-flow launch now arms the handicap (fixes 0-0 opener). Engine/submit/recompute UNTOUCHED; handicap events routed via record_fixture_result. · Profile speed + new-player fix: faster load (parallel fetches), new players show full banner + zeroed stats. Look unchanged. · Doubles-only ladder: removed Singles/Doubles toggle (ODR is squash doubles; OSR is the singles fork).";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
+const OPR_VERSION = "ODR-LAPTOP MDR v2026.08.15-22 · Divisions: new Overall index (all teams across categories with a Cat column M/L/X/A, read-only, no Create Team). Division tables now wrapped for fit-width/scroll on mobile so none spill. Club Ladder single category row retained.'X & null'). Tournament picker now defaults to 'Select tournament…' with the detail hidden until one is chosen (no silent archived-default). Plus v16 player-picker cache (no dropdown lag), v15 entry-flow live marker + individuals pickers + individual-rating fix, tournament auto-place fix (edge fn deployed). Engine 60/40 doubles derivation UNCHANGED. | SQUASH HANDICAP (display + umpire, no rating effect): fractional/alternating head-start to 11 for the underdog (OPR-parity); computeHandicap squash ladder; fixture + BOTH bracket renderers (koBox and bracketColumnHTML) + rounds-table labels; Rounds-tab notice reworded for squash; live marker resolves + applies the per-game head-start with a tap-to-continue GAME/MATCH banner; entry-flow launch now arms the handicap (fixes 0-0 opener). Engine/submit/recompute UNTOUCHED; handicap events routed via record_fixture_result. · Profile speed + new-player fix: faster load (parallel fetches), new players show full banner + zeroed stats. Look unchanged. · Doubles-only ladder: removed Singles/Doubles toggle (ODR is squash doubles; OSR is the singles fork).";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -3175,11 +3175,14 @@ async function loadLadder(type, title) {
         // Men's/Ladies/Mixed filter by category code; UNIVERSAL = every pair, no gender filter
         // (this is exactly how OPR does it — read player_results, don't require a doubles_results
         // 'Universal' category that may not be populated).
-        let q = `player_results?select=name,current_rating,gender,initial_rating&order=current_rating.desc&club_id=eq.${CLUB_ID}`;
+        let q = `player_results?select=name,current_rating,gender,initial_rating,sets_played&order=current_rating.desc&club_id=eq.${CLUB_ID}`;
         if(type!=='universal'){ q += `&gender=eq.${catCode[type]}`; }
         data = await sbGet(q) || [];
         // show only real PAIRS (name has " & "), not mirrored individuals
         data = data.filter(p=> (p.name||'').indexOf(' & ')>=0 );
+        // OVERALL STANDINGS: only teams that have actually PLAYED (sets_played > 0).
+        // (Registered-but-unplayed teams live in the Profile/Divisions roster, not here.)
+        data = data.filter(p=> (p.sets_played||0) > 0 );
       }
       // AGE-BRACKET FILTER (masters): filter the pairs to the selected bracket (default All).
       await (async()=>{ if(typeof mdrLoadDob==='function' && Object.keys(MDR_DOB).length===0){ try{ await mdrLoadDob(); }catch(e){} } })();
@@ -3331,6 +3334,7 @@ function mdrDivisionsGender(){
   const b=document.getElementById('mdrProfilesBody');
   b.innerHTML='<p class="mdr-hint">Pick a category to see its teams and age divisions.</p>'
     +'<div class="mdr-catrow" id="mdrDivGenderRow">'
+    +'<button class="mdr-pill" onclick="mdrDivPick(\'Overall\',\'ALL\',this)">Overall</button>'
     +'<button class="mdr-pill" onclick="mdrDivPick(\'Men\',\'M\',this)">Men</button>'
     +'<button class="mdr-pill" onclick="mdrDivPick(\'Ladies\',\'L\',this)">Ladies</button>'
     +'<button class="mdr-pill" onclick="mdrDivPick(\'Mixed\',\'X\',this)">Mixed</button>'
@@ -3340,8 +3344,10 @@ function mdrDivPick(label, code, el){
   _mdrDivGender=code; _mdrDivBracket='all'; _mdrDivLabel=label;
   // open the dedicated full page (mobile room)
   showScreen('mdrDivCatScreen');
-  document.getElementById('mdrDivCatTitle').textContent = label + ' Divisions';
-  mdrRenderCreateTeam();
+  document.getElementById('mdrDivCatTitle').textContent = (code==='ALL') ? 'Overall — all teams' : (label + ' Divisions');
+  // Overall is a read-only index across all categories — no Create Team there.
+  if(code==='ALL'){ const w=document.getElementById('mdrCreateTeamWrap2')||document.getElementById('mdrCreateTeamWrap'); if(w) w.innerHTML=''; }
+  else { mdrRenderCreateTeam(); }
   const bb=document.getElementById('mdrDivBrackets2');
   bb.innerHTML='<div class="mdr-brk">'+MDR_BRACKETS.map(x=>`<button class="mdr-pill${x==='all'?' on':''}" onclick="mdrDivBracket('${x}',this)">${x==='all'?'All':x}</button>`).join('')+'</div>'
     +'<p class="mdr-hint">A pair\'s division = its <b>younger</b> partner\'s age. Pairs only.</p>';
@@ -3365,19 +3371,41 @@ async function mdrRenderCreateTeam(){
   else if(g==='L') filt=p=>p.gender==='F';
   else filt=()=>true;                       // Mixed + All Sorts = everyone
   const inds=(await sbGet(`individuals?select=full_name,gender&club_id=eq.${CLUB_ID}&order=full_name.asc`)||[]).filter(filt);
-  const opts='<option value="">— select —</option>'+inds.map(p=>`<option value="${p.full_name.replace(/"/g,'&quot;')}">${p.full_name}</option>`).join('');
+  window._mdrCtNames = inds.map(p=>p.full_name);
+  window._mdrCtGender = {}; inds.forEach(p=>{ window._mdrCtGender[p.full_name]=p.gender; });
   const wrap=document.getElementById('mdrCreateTeamWrap2')||document.getElementById('mdrCreateTeamWrap');
   wrap.innerHTML=`
     <button class="mdr-pill" style="width:100%;margin:6px 0 12px;" onclick="mdrToggleCreateTeam()"><span id="ctToggleTxt">+ Create a team</span></button>
     <div id="ctPanel" style="display:none;background:#fdf3ec;border:2px solid rgba(211,84,0,.25);border-radius:14px;padding:14px;margin:0 0 14px;">
       <label style="font-size:12px;color:#7a6688;font-weight:700;">Player 1</label>
-      <select id="ctP1" class="ac-field" onchange="mdrCreateTeamPreview()">${opts}</select>
+      <input type="hidden" id="ctP1">
+      <button type="button" class="name-pick-btn" id="ctP1btn" onclick="mdrCtPick(1)">— select —</button>
       <label style="font-size:12px;color:#7a6688;font-weight:700;">Player 2</label>
-      <select id="ctP2" class="ac-field" onchange="mdrCreateTeamPreview()">${opts}</select>
+      <input type="hidden" id="ctP2">
+      <button type="button" class="name-pick-btn" id="ctP2btn" onclick="mdrCtPick(2)">— select —</button>
       <div id="ctPreview" style="background:#fff;border-radius:8px;padding:8px 12px;font-size:13px;color:#7a6688;margin:6px 0;">Pick two players to see the pairing.</div>
       <button class="ac-btn ac-btn-primary" style="width:100%;" onclick="mdrCreateTeam()">Create team</button>
       <div id="ctMsg" style="font-size:13px;margin-top:8px;"></div>
     </div>`;
+}
+function mdrCtPick(which){
+  const names = window._mdrCtNames || [];
+  const gmap = window._mdrCtGender || {};
+  const thisEl=document.getElementById('ctP'+which);
+  const otherEl=document.getElementById('ctP'+(which===1?2:1));
+  const thisVal=thisEl?thisEl.value:'', otherVal=otherEl?otherEl.value:'';
+  let list = names.filter(n=> n!==otherVal );
+  // Mixed: the two must be opposite genders — filter to the complement of the other slot.
+  if(_mdrDivGender==='X' && otherVal){
+    const og=gmap[otherVal];
+    if(og==='M') list=list.filter(n=>gmap[n]==='F');
+    else if(og==='F') list=list.filter(n=>gmap[n]==='M');
+  }
+  openNamePicker('Player '+which, list, function(name){
+    document.getElementById('ctP'+which).value=name;
+    const b=document.getElementById('ctP'+which+'btn'); if(b){ b.textContent=name; b.classList.add('selected'); }
+    mdrCreateTeamPreview();
+  });
 }
 function mdrCreateTeamPreview(){
   const p1=document.getElementById('ctP1').value, p2=document.getElementById('ctP2').value;
@@ -3407,6 +3435,7 @@ async function mdrCreateTeam(){
     const name=await odrEnsurePair(p1,p2);   // same dedup as match entry (reverse-order safe)
     msg.innerHTML='<span style="color:#1e8449;">Team ready: '+name+'</span>';
     document.getElementById('ctP1').value=''; document.getElementById('ctP2').value='';
+    ['ctP1btn','ctP2btn'].forEach(id=>{ const b=document.getElementById(id); if(b){ b.textContent='— select —'; b.classList.remove('selected'); } });
     document.getElementById('ctPreview').innerHTML='Pick two players to see the pairing.';
     _playersLoaded=false;                     // roster of pairs changed
     mdrRenderDivTable();                       // refresh the division table to show it
@@ -3418,8 +3447,14 @@ async function mdrRenderDivTable(){
   await Promise.all([ mdrLoadDob(), (typeof OPR!=='undefined'?OPR.load():Promise.resolve()) ]);
   // all registered pairs (member_a_id not null = a real pair, not a mirrored individual)
   const pairs = await sbGet(`players?select=name,gender,member_a_id,member_b_id&club_id=eq.${CLUB_ID}&member_a_id=not.is.null&order=name.asc`) || [];
-  const catOf=g=>g==='M'?'M':g==='L'?'L':'X';
+  const _overall = (_mdrDivGender==='ALL');
+  // Category code for the Overall index: M / L / X / A(ll Sorts). Pairs store gender as M/L/X;
+  // an "All Sorts" pair is one whose members' genders don't define it as M/L/X play — but in
+  // this roster a pair's stored gender is its category, so map straight through (X shows as X).
+  const catCode=g=> g==='M'?'M' : g==='L'?'L' : g==='X'?'X' : 'A';
+  const catFull=c=> c==='M'?"Men's" : c==='L'?'Ladies' : c==='X'?'Mixed' : 'All Sorts';
   let list = pairs.filter(p=>{
+    if(_overall) return true;                              // Overall index = every pair
     if(_mdrDivGender==='AS') return true;                 // All Sorts = every pair
     if(_mdrDivGender==='X')  return p.gender==='X';        // Mixed
     return p.gender===_mdrDivGender;                       // Men / Ladies
@@ -3427,16 +3462,19 @@ async function mdrRenderDivTable(){
     const i=p.name.indexOf(' & ');
     const a=i>=0?p.name.slice(0,i):p.name, b=i>=0?p.name.slice(i+3):'';
     const rating = (typeof OPR!=='undefined' && OPR.pairByName) ? OPR.pairByName(p.name) : null;
-    return { name:p.name, rating, div:pairBracketByNames(a,b) };
+    return { name:p.name, rating, div:pairBracketByNames(a,b), cat:catCode(p.gender) };
   });
   if(_mdrDivBracket!=='all') list=list.filter(x=>x.div===_mdrDivBracket);
   list.sort((a,b)=>(b.rating||0)-(a.rating||0));
-  let h='<table class="ladder-table"><thead><tr><th>Rank</th><th>Pair</th><th>Rating</th><th>Level</th><th>Division</th></tr></thead><tbody>';
-  if(!list.length) h+='<tr><td colspan="5" style="text-align:center;color:#9a8578;padding:16px;">No teams in this division yet — use “Create a team” above.</td></tr>';
+  const _catHdr = _overall ? '<th>Cat</th>' : '';
+  let h='<table class="ladder-table"><thead><tr><th>Rank</th><th>Pair</th>'+_catHdr+'<th>Rating</th><th>Level</th><th>Division</th></tr></thead><tbody>';
+  const _cols = _overall ? 6 : 5;
+  if(!list.length) h+='<tr><td colspan="'+_cols+'" style="text-align:center;color:#9a8578;padding:16px;">'+(_overall?'No teams registered yet.':'No teams in this division yet — use “Create a team” above.')+'</td></tr>';
   list.forEach((x,i)=>{ const r=(x.rating!=null?Math.round(x.rating):null);
-    h+=`<tr><td>${rankBadge(i+1)}</td><td>${x.name}</td><td>${r!=null?r:'—'}</td><td>${r!=null?(r/200).toFixed(1):'—'}</td><td style="color:#D35400;font-weight:800;font-size:12px;">${x.div}</td></tr>`; });
+    const catCell = _overall ? `<td style="font-weight:800;color:#7E3200;">${x.cat}</td>` : '';
+    h+=`<tr><td>${rankBadge(i+1)}</td><td>${x.name}</td>${catCell}<td>${r!=null?r:'—'}</td><td>${r!=null?(r/200).toFixed(1):'—'}</td><td style="color:#D35400;font-weight:800;font-size:12px;">${x.div}</td></tr>`; });
   h+='</tbody></table>';
-  (document.getElementById('mdrDivTable2')||document.getElementById('mdrDivTable')).innerHTML=h;
+  (document.getElementById('mdrDivTable2')||document.getElementById('mdrDivTable')).innerHTML='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">'+h+'</div>';
 }
 
 async function showProfileSearch() {
@@ -8556,7 +8594,7 @@ async function renderClubLadder(){
     }
   }
 
-  body.innerHTML = divBar + nav + bodyHTML;
+  body.innerHTML = nav + bodyHTML;   // nav already includes the category + bracket bars (view mode)
   if(CL_TAB==='ladder'){ addExportBar('clBody','Club_Ladder','Club Ladder — '+cat); }
 }
 
