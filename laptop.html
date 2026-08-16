@@ -3455,6 +3455,16 @@ async function mdrRenderDivTable(){
   // all registered pairs (member_a_id not null = a real pair, not a mirrored individual)
   const pairs = await sbGet(`players?select=name,gender,member_a_id,member_b_id&club_id=eq.${CLUB_ID}&member_a_id=not.is.null&order=name.asc`) || [];
   const _overall = (_mdrDivGender==='ALL');
+  // ALL SORTS is an ADDITIONAL division: a pair belongs to it if stored as 'A' OR if it has
+  // played an All Sorts match. A pair keeps its natural category (M/L/X) as well — it can appear
+  // in both. Build the set of pair-names that have played an All Sorts match.
+  let asPlayedNames = new Set();
+  try{
+    const asM = await sbGet(`matches?select=t1p1,t1p2,t2p1,t2p2&match_type=eq.All%20Sorts&club_id=eq.${CLUB_ID}`) || [];
+    const nm=(a,b)=>{ a=(a||'').trim(); b=(b||'').trim(); if(!a) return null; if(!b) return a; return [a,b].sort((x,y)=>x.localeCompare(y)).join(' & '); };
+    asM.forEach(m=>{ const n1=nm(m.t1p1,m.t1p2), n2=nm(m.t2p1,m.t2p2); if(n1) asPlayedNames.add(n1); if(n2) asPlayedNames.add(n2); });
+  }catch(e){}
+  const isAllSorts = p => (p.gender==='A') || asPlayedNames.has(p.name);
   // Category code for the Overall index: M / L / X / A(ll Sorts). Pairs store gender as M/L/X;
   // an "All Sorts" pair is one whose members' genders don't define it as M/L/X play — but in
   // this roster a pair's stored gender is its category, so map straight through (X shows as X).
@@ -3462,7 +3472,7 @@ async function mdrRenderDivTable(){
   const catFull=c=> c==='M'?"Men's" : c==='L'?'Ladies' : c==='X'?'Mixed' : 'All Sorts';
   let list = pairs.filter(p=>{
     if(_overall) return true;                              // Overall index = every pair
-    if(_mdrDivGender==='AS') return p.gender==='A';        // All Sorts = only teams registered All Sorts
+    if(_mdrDivGender==='AS') return isAllSorts(p);         // All Sorts = registered 'A' OR played an All Sorts match
     if(_mdrDivGender==='X')  return p.gender==='X';        // Mixed
     return p.gender===_mdrDivGender;                       // Men / Ladies
   }).map(p=>{
