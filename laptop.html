@@ -2869,7 +2869,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'ODR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "MDR v2026.08.15-51";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
+const OPR_VERSION = "MDR v2026.08.15-52";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -5085,10 +5085,22 @@ async function submitMatch(){
   // Duplicate-result guard for INTERNAL tournaments: if a fixture for these two
   // teams already has a score, warn and let the admin choose to proceed.
   const ev=(entryData.event||'').trim();
+  // SHARED FETCH (perf): both the duplicate-result guard and the ambiguity pre-check below
+  // need the same tournament type + entries. Fetch each ONCE here and reuse (was 4 duplicate
+  // round-trips). Pure read caching — no logic/engine change.
+  let _tType=null, _tEnts=null;
   if(ev && ev!=='Social' && ev!=='Ladder Match'){
     try{
-      const trow = await sbGet(`tournaments?select=type&name=eq.${encodeURIComponent(ev)}&club_id=eq.${CLUB_ID}&limit=1`);
-      if(trow && trow.length && trow[0].type==='internal'){
+      const _tr = await sbGet(`tournaments?select=type&name=eq.${encodeURIComponent(ev)}&club_id=eq.${CLUB_ID}&limit=1`);
+      _tType = (_tr && _tr.length) ? _tr[0].type : null;
+      if(_tType==='internal'){
+        _tEnts = await sbGet(`tournament_entries?select=seed,p1,p2&tournament=eq.${encodeURIComponent(ev)}&category=eq.${encodeURIComponent(_mDiv)}&club_id=eq.${CLUB_ID}`) || [];
+      }
+    }catch(e){}
+  }
+  if(ev && ev!=='Social' && ev!=='Ladder Match'){
+    try{
+      if(_tType==='internal'){
         // If EVERY fixture in this division already has a result, the draw is complete —
         // warn (a new match won't appear on the board, no open fixture). Allow override.
         const allFx = await sbGet(`tournament_fixtures?select=sets_a,round_type&tournament=eq.${encodeURIComponent(ev)}&division=eq.${encodeURIComponent(_mDiv)}&club_id=eq.${CLUB_ID}`) || [];
@@ -5097,7 +5109,7 @@ async function submitMatch(){
             return;
           }
         }
-        const ents = await sbGet(`tournament_entries?select=seed,p1,p2&tournament=eq.${encodeURIComponent(ev)}&category=eq.${encodeURIComponent(_mDiv)}&club_id=eq.${CLUB_ID}`) || [];
+        const ents = _tEnts || [];
         // SINGLES-SAFE: ignore null slots. Without the truthiness guard, a singles entry
         // (p2=null) matched ANY singles match (b=null) via null===null, returning the
         // wrong seed and mis-flagging duplicates.
@@ -5122,9 +5134,8 @@ async function submitMatch(){
   // so nothing is written unless the operator confirms.
   if(ev && ev!=='Social' && ev!=='Ladder Match'){
     try{
-      const trow = await sbGet(`tournaments?select=type&name=eq.${encodeURIComponent(ev)}&club_id=eq.${CLUB_ID}&limit=1`);
-      if(trow && trow.length && trow[0].type==='internal'){
-        const ents = await sbGet(`tournament_entries?select=seed,p1,p2&tournament=eq.${encodeURIComponent(ev)}&category=eq.${encodeURIComponent(_mDiv)}&club_id=eq.${CLUB_ID}`) || [];
+      if(_tType==='internal'){
+        const ents = _tEnts || [];
         const pairOf=(seed)=>ents.find(e=>e.seed===seed);
         // SINGLES-SAFE: only count REAL names. Previously a singles match (y=null) against
         // a singles entry (p.p2=null) scored a phantom hit because null===null is true,
