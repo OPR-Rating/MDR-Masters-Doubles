@@ -1000,7 +1000,6 @@
             <h4>Bulk create pairs (paste)</h4>
             <p style="font-size:12px;color:#7a6688;margin:0 0 8px;">Paste rows of <b>Person A, Person B</b> — one pair per line (just the two individuals' names, comma or tab separated). Names must exactly match registered individuals. The pair's category, 60/40 rating and age division are all derived from the two individuals — nothing else to enter.</p>
             <textarea id="bulkPairText" class="ac-field" style="min-height:120px;font-family:monospace;font-size:12px;" placeholder="Andre Farrell, Bridget Farrell&#10;Andre Farrell, James Howes"></textarea>
-            <label style="display:flex;align-items:center;gap:8px;margin:6px 0 8px;font-size:13px;cursor:pointer;"><input type="checkbox" id="bulkPairAllSorts" style="width:18px;height:18px;"> These are <b>All Sorts</b> teams (otherwise category is auto-set: M+M Men's, F+F Ladies, M+F Mixed)</label>
             <button class="ac-btn ac-btn-primary" style="width:100%;" onclick="odrBulkCreatePairs()">Create all pasted pairs</button>
             <div id="bulkPairMsg" class="ac-msg"></div>
           </div>
@@ -2058,7 +2057,7 @@ let ODR_INDIV=[], ODR_PAIRS=[], odrSelA=null, odrSelB=null, odrSearchWired=false
 function odrRhu(x){ return Math.floor(x+0.5); }
 function odrWeighted(a,b){ return odrRhu(Math.max(a,b)*0.6 + Math.min(a,b)*0.4); }
 function odrPairCat(gA,gB){ if(gA==='M'&&gB==='M')return'M'; if(gA==='F'&&gB==='F')return'L'; return'X'; }
-function odrCatLabel(c){ return c==='M'?"Men's":c==='L'?'Ladies':c==='A'?'All Sorts':'Mixed'; }
+function odrCatLabel(c){ return c==='M'?"Men's":c==='L'?'Ladies':'Mixed'; }
 function odrPairName(nA,nB){ return [nA,nB].sort(function(x,y){return x.localeCompare(y);}).join(' & '); }
 function odrCid(){ return Number(document.getElementById('adminClubSelect').value)||1; }
 
@@ -2176,7 +2175,6 @@ async function odrCreatePair(){
 async function odrBulkCreatePairs(){
   const msg=document.getElementById('bulkPairMsg');
   const raw=document.getElementById('bulkPairText').value;
-  const allSorts=!!(document.getElementById('bulkPairAllSorts')||{}).checked;
   const lines=raw.split('\n').map(l=>l.trim()).filter(l=>l.length);
   if(!lines.length){ msg.innerHTML='<span style="color:#c0392b;">Paste some rows first.</span>'; return; }
   const jobs=[], errs=[];
@@ -2189,7 +2187,7 @@ async function odrBulkCreatePairs(){
   msg.innerHTML='Creating '+jobs.length+' pairs…';
   let ok=0, fail=0, failN=[];
   for(const j of jobs){
-    try{ await odrEnsurePair(j.a, j.b, allSorts?'A':null); ok++; }   // individual-based, 60/40, dedup; All Sorts via tick
+    try{ await odrEnsurePair(j.a, j.b); ok++; }   // individual-based, 60/40, dedup
     catch(e){ fail++; failN.push(j.a+' & '+j.b+' ('+(e.message||e)+')'); }
   }
   let out='<span style="color:#1e8449;">Created '+ok+' pair'+(ok===1?'':'s')+'.</span>';
@@ -2871,7 +2869,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'ODR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "MDR v2026.08.15-47";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
+const OPR_VERSION = "MDR v2026.08.15-48";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -3471,7 +3469,7 @@ async function mdrRenderDivTable(){
     const nm=(a,b)=>{ a=(a||'').trim(); b=(b||'').trim(); if(!a) return null; if(!b) return a; return [a,b].sort((x,y)=>x.localeCompare(y)).join(' & '); };
     asM.forEach(m=>{ const n1=nm(m.t1p1,m.t1p2), n2=nm(m.t2p1,m.t2p2); if(n1) asPlayedNames.add(n1); if(n2) asPlayedNames.add(n2); });
   }catch(e){}
-  const isAllSorts = p => (p.gender==='A') || asPlayedNames.has(p.name);
+  const isAllSorts = p => asPlayedNames.has(p.name);
   // Category code for the Overall index: M / L / X / A(ll Sorts). Pairs store gender as M/L/X;
   // an "All Sorts" pair is one whose members' genders don't define it as M/L/X play — but in
   // this roster a pair's stored gender is its category, so map straight through (X shows as X).
@@ -3601,7 +3599,7 @@ async function showPartnerships(indivId){
       return `<div onclick="window._profileFrom='partnerships';loadProfile('${t.name.replace(/'/g,"\\'")}','${t.gender}')" style="cursor:pointer;background:#fff;border:1px solid rgba(211,84,0,.16);border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.05);">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
           <span style="font-weight:700;flex:1;">${t.name}</span>
-          <span class="odr-cat-pill ${catCls(t.gender)}">${catLabel(t.gender)}</span>${(t.gender!=='A' && _asPairNames.has(t.name))?'<span class="odr-cat-pill odr-cat-A" style="margin-left:4px;">All Sorts</span>':''}
+          <span class="odr-cat-pill ${catCls(t.gender)}">${catLabel(t.gender)}</span>${(_asPairNames.has(t.name))?'<span class="odr-cat-pill odr-cat-A" style="margin-left:4px;">All Sorts</span>':''}
         </div>
         <div style="display:flex;gap:16px;font-size:13px;color:#5a4636;">
           <span>Rating <b style="color:#D35400;">${r.cur}</b></span>
@@ -4939,7 +4937,7 @@ function renderStep4(){
 
 // ODR auto-birth: given two individual NAMES, return the pair's name, creating the pair
 // (players row, 60/40 birth, category from genders, no pair-PIN) if it doesn't exist yet.
-async function odrEnsurePair(nameA, nameB, catOverride){
+async function odrEnsurePair(nameA, nameB){
   nameA=(nameA||'').trim(); nameB=(nameB||'').trim();
   if(!nameA || !nameB) throw new Error('two players are required per side');
   if(nameA===nameB) throw new Error('a pair needs two different players');
@@ -4954,22 +4952,14 @@ async function odrEnsurePair(nameA, nameB, catOverride){
   // already exists? Match the pair whichever ORDER its members are stored — an older row may
   // have member_a_id/member_b_id swapped (e.g. 110/94 vs our 94/110). Checking only lo,hi would
   // miss it and birth a DUPLICATE pair row. This or() matches both orders.
-  const existing = await sbGet(`players?select=id,name,gender&club_id=eq.${CLUB_ID}&or=(and(member_a_id.eq.${lo},member_b_id.eq.${hi}),and(member_a_id.eq.${hi},member_b_id.eq.${lo}))&limit=1`);
-  if(existing && existing.length){
-    const ex=existing[0];
-    // If an explicit category override is given and differs, reclassify the existing pair.
-    if(catOverride && ex.gender!==catOverride){
-      await fetch(SB_URL+'/rest/v1/players?id=eq.'+ex.id,{ method:'PATCH', headers:{ apikey:SB_ANON, Authorization:'Bearer '+SB_ANON, 'Content-Type':'application/json' }, body:JSON.stringify({ gender:catOverride }) });
-      await fetch(SB_URL+'/rest/v1/player_results?player_id=eq.'+ex.id,{ method:'PATCH', headers:{ apikey:SB_ANON, Authorization:'Bearer '+SB_ANON, 'Content-Type':'application/json' }, body:JSON.stringify({ gender:catOverride }) });
-    }
-    return ex.name;
-  }
+  const existing = await sbGet(`players?select=name&club_id=eq.${CLUB_ID}&or=(and(member_a_id.eq.${lo},member_b_id.eq.${hi}),and(member_a_id.eq.${hi},member_b_id.eq.${lo}))&limit=1`);
+  if(existing && existing.length) return existing[0].name;
   // birth it: 60/40, category from genders
   const rhu=x=>Math.floor(x+0.5);
   const sa=a.seed_rating, sb=b.seed_rating;
   const init=rhu(Math.max(sa,sb)*0.6 + Math.min(sa,sb)*0.4);
   const ga=a.gender, gb=b.gender;
-  const cat = (catOverride==='A') ? 'A' : ((ga==='M'&&gb==='M')?'M':(ga==='F'&&gb==='F')?'L':'X');
+  const cat=(ga==='M'&&gb==='M')?'M':(ga==='F'&&gb==='F')?'L':'X';
   const ins = await fetch(SB_URL+'/rest/v1/players',{ method:'POST', headers:{ apikey:SB_ANON, Authorization:'Bearer '+SB_ANON, 'Content-Type':'application/json', Prefer:'return=representation' }, body:JSON.stringify({ club_id:CLUB_ID, name:canonName, gender:cat, initial_rating:init, season_initial:init, pin:null, member_a_id:lo, member_b_id:hi }) });
   if(!ins.ok) throw new Error(await ins.text());
   const rows = await ins.json();
