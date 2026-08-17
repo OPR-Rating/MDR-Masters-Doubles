@@ -2819,13 +2819,12 @@ async function loadFormWall(type, title) {
       const uf = (data||[]).filter(p=>!(p.team_form!=null && (p.sets||0)>=FORM_MIN));
       qf.sort((a,b)=>(b.team_form-a.team_form)||((b.set_win_pct||0)-(a.set_win_pct||0))||((b.game_diff_per_set||0)-(a.game_diff_per_set||0))||((b.sets_won||0)-(a.sets_won||0)));
       uf.sort((a,b)=>((b.set_win_pct||0)-(a.set_win_pct||0))||((b.sets_won||0)-(a.sets_won||0)));
-      html += '<table class="ladder-table"><thead><tr><th>Pair</th><th>Games</th><th>Games Won</th><th>Win %</th><th>Point Diff/Game</th><th>Form</th><th>Division</th></tr></thead><tbody>';
+      html += '<table class="ladder-table"><thead><tr><th>Pair</th><th>Games</th><th>Games Won</th><th>Win %</th><th>Point Diff/Game</th><th>Form</th></tr></thead><tbody>';
       const frow=(p,style)=>{
         const winpct = p.set_win_pct==null?'—':Number(p.set_win_pct).toFixed(1);
         const gdps = p.game_diff_per_set==null?'—':Number(p.game_diff_per_set).toFixed(2);
         const fv = p.team_form==null?'—':Number(p.team_form).toFixed(3);
-        const _div = (typeof pairBracketByNames==='function') ? pairBracketByNames(p.p1,p.p2) : '';
-        return `<tr style="${style}"><td>${pairName(p.p1,p.p2)}</td><td>${p.sets}</td><td>${p.sets_won==null?'—':Math.round(p.sets_won)}</td><td>${winpct}</td><td>${gdps}</td><td><strong>${fv}</strong></td><td style="color:#D35400;font-weight:800;font-size:12px;">${_div}</td></tr>`;
+        return `<tr style="${style}"><td>${pairName(p.p1,p.p2)}</td><td>${p.sets}</td><td>${p.sets_won==null?'—':Math.round(p.sets_won)}</td><td>${winpct}</td><td>${gdps}</td><td><strong>${fv}</strong></td></tr>`;
       };
       qf.forEach(p=>{ html+=frow(p,''); });
       if(uf.length){
@@ -2869,7 +2868,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'ODR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "MDR v2026.08.15-51";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
+const OPR_VERSION = "MDR v2026.08.15-54";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -3819,7 +3818,7 @@ async function loadTournament(category, title) {
     let pos=0;
     q.forEach(p=>{ pos++; html+=rowFor(p,rankBadge(pos),''); });
     if(u.length){
-      html+=`<tr><td colspan="7" style="background:rgba(211,84,0,.10);color:#3a6b5c;font-size:11px;font-style:italic;padding:7px 12px;">Fewer than ${STATS_MIN} sets played — shown for reference, not ranked</td></tr>`;
+      html+=`<tr><td colspan="6" style="background:rgba(211,84,0,.10);color:#3a6b5c;font-size:11px;font-style:italic;padding:7px 12px;">Fewer than ${STATS_MIN} sets played — shown for reference, not ranked</td></tr>`;
       u.forEach(p=>{ html+=rowFor(p,'—','opacity:0.55;'); });
     }
     html+='</tbody></table>';
@@ -5659,13 +5658,14 @@ let MDR_DOB = {};
 async function mdrLoadDob(){
   try{
     const rows = await sbGet(`individuals?select=full_name,dob&club_id=eq.${CLUB_ID}`) || [];
-    MDR_DOB = {}; rows.forEach(r=>{ if(r.full_name) MDR_DOB[r.full_name]=r.dob||null; });
+    MDR_DOB = {}; rows.forEach(r=>{ if(r.full_name){ MDR_DOB[r.full_name]=r.dob||null; MDR_DOB[String(r.full_name).trim().toLowerCase()]=r.dob||null; } });
   }catch(e){ MDR_DOB={}; }
 }
 function indivBracket(name){ return bracketOf(ageFromDob(MDR_DOB[name])); }
 // pair bracket: younger partner. names may be "A & B" or two args.
 function pairBracketByNames(a,b){
-  const ag=ageFromDob(MDR_DOB[a]), bg=ageFromDob(MDR_DOB[b]);
+  const _dob=n=>{ if(n==null) return null; if(MDR_DOB[n]!=null) return MDR_DOB[n]; const k=String(n).trim().toLowerCase(); return MDR_DOB[k]!=null?MDR_DOB[k]:null; };
+  const ag=ageFromDob(_dob(a)), bg=ageFromDob(_dob(b));
   if(ag==null && bg==null) return 'Open';
   const young = (ag==null)?bg : (bg==null)?ag : Math.min(ag,bg);
   return bracketOf(young);
