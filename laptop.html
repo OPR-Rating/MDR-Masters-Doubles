@@ -673,7 +673,7 @@
             <li><strong>0.55–0.70</strong> — Good, winning more than losing.</li>
             <li><strong>0.40–0.55</strong> — Middling, competitive but mixed.</li>
             <li><strong>0.00–0.40</strong> — Struggling.</li>
-            <li><strong>Below 0</strong> — Losing sets by wide margins.</li>
+            <li><strong>Below 0</strong> — Losing games by wide margins.</li>
           </ul>
           <p style="margin:0 0 4px;"><strong>Why Form, not just Win %?</strong></p>
           <p style="margin:0;">Win % treats a narrow 7–6 win the same as a crushing 6–0, and ignores who you played. Form rewards convincing performances and accounts for opponent strength — a fairer picture of how someone is actually playing. For doubles, Form shows how a <strong>partnership performs as a team</strong>.</p>
@@ -807,7 +807,7 @@
             <li><strong>0.55–0.70</strong> — Good, winning more than losing.</li>
             <li><strong>0.40–0.55</strong> — Middling, competitive but mixed.</li>
             <li><strong>0.00–0.40</strong> — Struggling.</li>
-            <li><strong>Below 0</strong> — Losing sets by wide margins.</li>
+            <li><strong>Below 0</strong> — Losing games by wide margins.</li>
           </ul>
           <p style="margin:0 0 4px;"><strong>Why Form, not just Win %?</strong></p>
           <p style="margin:0;">Win % treats a narrow win the same as a crushing one, and ignores who you played. Form rewards convincing performances and accounts for opponent strength. For doubles, Form shows how a <strong>partnership performs as a team</strong>.</p>
@@ -2533,9 +2533,9 @@ function adminEditMatch(id){
     + '<label style="font-size:11px;color:#5aa98d;">Date (yyyy-mm-dd)</label><input id="emDate" value="'+m.match_date+'" style="'+fld+'">'
     + '<label style="font-size:11px;color:#5aa98d;">Event</label><input id="emEvent" value="'+(m.event||'Social').replace(/"/g,'&quot;')+'" style="'+fld+'">'
     + '<div style="font-size:12px;margin:4px 0;">'+sideName(m.t1p1,m.t1p2,' &amp; ')+'</div>'
-    + '<div class="ac-row"><input id="emT1s" type="number" value="'+m.t1_sets+'" placeholder="sets" style="'+fld+'"><input id="emT1g" type="number" value="'+m.t1_games+'" placeholder="games" style="'+fld+'"></div>'
+    + '<div class="ac-row"><input id="emT1s" type="number" value="'+m.t1_sets+'" placeholder="games" style="'+fld+'"><input id="emT1g" type="number" value="'+m.t1_games+'" placeholder="games" style="'+fld+'"></div>'
     + '<div style="font-size:12px;margin:4px 0;">'+sideName(m.t2p1,m.t2p2,' &amp; ')+'</div>'
-    + '<div class="ac-row"><input id="emT2s" type="number" value="'+m.t2_sets+'" placeholder="sets" style="'+fld+'"><input id="emT2g" type="number" value="'+m.t2_games+'" placeholder="games" style="'+fld+'"></div>'
+    + '<div class="ac-row"><input id="emT2s" type="number" value="'+m.t2_sets+'" placeholder="games" style="'+fld+'"><input id="emT2g" type="number" value="'+m.t2_games+'" placeholder="games" style="'+fld+'"></div>'
     + '<label style="font-size:11px;color:#5aa98d;">Game scores (e.g. 11-6,11-8)</label><input id="emSet" value="'+(m.set_scores||'').replace(/"/g,'&quot;')+'" style="'+fld+'">'
     + '<button class="ac-btn ac-btn-primary" style="width:100%;" onclick="adminSaveMatch('+id+')">Save changes</button>'
     + '<button class="ac-btn ac-btn-ghost" style="width:100%;margin-top:6px;" onclick="adminLoadMatches()">Cancel</button>'
@@ -2869,7 +2869,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'ODR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "MDR v2026.08.15-48";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
+const OPR_VERSION = "MDR v2026.08.15-51";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -2888,7 +2888,7 @@ function ladderNoteHTML(){
       + 'background:rgba(211,84,0,.07);border:1px solid rgba(211,84,0,.35);border-top:none;border-left:none;'
       + 'font-size:13px;font-weight:500;color:#0d4a38;line-height:1.6;">'
       + 'A rating is <strong>not only</strong> based on who won — it is a combination of '
-      + '<strong>sets played</strong>, the <strong>opponent\'s strength</strong>, the '
+      + '<strong>games played</strong>, the <strong>opponent\'s strength</strong>, the '
       + '<strong>expected vs actual result</strong>, and the <strong>margin of win or loss</strong>.'
       + '<div style="margin-top:8px;font-weight:600;color:#B8480A;">Tap any player for their story.</div>'
     + '</div></div>';
@@ -3458,7 +3458,7 @@ async function mdrCreateTeam(){
 async function mdrRenderDivTable(){
   await Promise.all([ mdrLoadDob(), (typeof OPR!=='undefined'?OPR.load():Promise.resolve()) ]);
   // all registered pairs (member_a_id not null = a real pair, not a mirrored individual)
-  const pairs = await sbGet(`players?select=name,gender,member_a_id,member_b_id&club_id=eq.${CLUB_ID}&member_a_id=not.is.null&order=name.asc`) || [];
+  const pairs = await sbGet(`players?select=name,gender,member_a_id,member_b_id,initial_rating&club_id=eq.${CLUB_ID}&member_a_id=not.is.null&order=name.asc`) || [];
   const _overall = (_mdrDivGender==='ALL');
   // ALL SORTS is an ADDITIONAL division: a pair belongs to it if stored as 'A' OR if it has
   // played an All Sorts match. A pair keeps its natural category (M/L/X) as well — it can appear
@@ -3490,17 +3490,20 @@ async function mdrRenderDivTable(){
       const ra=OPR.indiv(a), rb=OPR.indiv(b);
       if(ra!=null && rb!=null) rating=Math.round(OPR.w6040(ra,rb));
     }
-    return { name:p.name, rating, div:pairBracketByNames(a,b), cat:catCode(p.gender) };
+    const init=(p.initial_rating!=null?Math.round(p.initial_rating):null);
+    const move=(rating!=null && init!=null)?(Math.round(rating)-init):null;
+    return { name:p.name, rating, move, div:pairBracketByNames(a,b), cat:catCode(p.gender) };
   });
   if(_mdrDivBracket!=='all') list=list.filter(x=>x.div===_mdrDivBracket);
   list.sort((a,b)=>(b.rating||0)-(a.rating||0));
   const _catHdr = _overall ? '<th>Cat</th>' : '';
-  let h='<table class="ladder-table"><thead><tr><th>Rank</th><th>Pair</th>'+_catHdr+'<th>Rating</th><th>Level</th><th>Division</th></tr></thead><tbody>';
-  const _cols = _overall ? 6 : 5;
+  let h='<table class="ladder-table"><thead><tr><th>Rank</th><th>Pair</th>'+_catHdr+'<th>Rating</th><th>Level</th><th>Move</th><th>Division</th></tr></thead><tbody>';
+  const _cols = _overall ? 7 : 6;
   if(!list.length) h+='<tr><td colspan="'+_cols+'" style="text-align:center;color:#9a8578;padding:16px;">'+(_overall?'No teams registered yet.':'No teams in this division yet — use “Create a team” above.')+'</td></tr>';
   list.forEach((x,i)=>{ const r=(x.rating!=null?Math.round(x.rating):null);
     const catCell = _overall ? `<td style="font-weight:800;color:#7E3200;">${x.cat}</td>` : '';
-    h+=`<tr><td>${rankBadge(i+1)}</td><td>${x.name}</td>${catCell}<td>${r!=null?r:'—'}</td><td>${r!=null?(r/200).toFixed(1):'—'}</td><td style="color:#D35400;font-weight:800;font-size:12px;">${x.div}</td></tr>`; });
+    const _mv=(x.move==null)?'—':((x.move>0?'+':'')+x.move); const _mvc=(x.move==null||x.move>=0)?'#1e8449':'#c0392b';
+    h+=`<tr><td>${rankBadge(i+1)}</td><td>${x.name}</td>${catCell}<td>${r!=null?r:'—'}</td><td>${r!=null?(r/200).toFixed(1):'—'}</td><td style="color:${_mvc};font-weight:800;">${_mv}</td><td style="color:#D35400;font-weight:800;font-size:12px;">${x.div}</td></tr>`; });
   h+='</tbody></table>';
   const _dt = (document.getElementById('mdrDivTable2')||document.getElementById('mdrDivTable'));
   _dt.innerHTML=h;
@@ -5456,7 +5459,7 @@ async function toggleProfileMatch(idx){
     }
     const mysets = onT1 ? (m.t1_sets||0) : (m.t2_sets||0);
     const oppsets = onT1 ? (m.t2_sets||0) : (m.t1_sets||0);
-    detail.innerHTML='<div style="text-align:center;padding:4px 0;">'+(scoresHTML||'<span style="color:#888;font-size:11px;">'+mysets+'-'+oppsets+' sets</span>')+'</div><div style="font-size:11px;color:#888;text-align:center;">'+date+' · '+type+'</div>';
+    detail.innerHTML='<div style="text-align:center;padding:4px 0;">'+(scoresHTML||'<span style="color:#888;font-size:11px;">'+mysets+'-'+oppsets+' games</span>')+'</div><div style="font-size:11px;color:#888;text-align:center;">'+date+' · '+type+'</div>';
   } else {
     detail.style.display='none';
   }
@@ -5487,7 +5490,7 @@ async function togglePartnerMatch(idx){
     }
     const mysets = onT1 ? (m.t1_sets||0) : (m.t2_sets||0);
     const oppsets = onT1 ? (m.t2_sets||0) : (m.t1_sets||0);
-    detail.innerHTML='<div style="text-align:center;padding:4px 0;">'+(scoresHTML||'<span style="color:#888;font-size:11px;">'+mysets+'-'+oppsets+' sets</span>')+'</div><div style="font-size:11px;color:#888;text-align:center;">'+date+' · '+type+'</div>';
+    detail.innerHTML='<div style="text-align:center;padding:4px 0;">'+(scoresHTML||'<span style="color:#888;font-size:11px;">'+mysets+'-'+oppsets+' games</span>')+'</div><div style="font-size:11px;color:#888;text-align:center;">'+date+' · '+type+'</div>';
   } else {
     detail.style.display='none';
   }
@@ -5537,6 +5540,13 @@ function filterModalPlayers() {
   renderModalList(filtered);
 }
 
+function pmBandTag(name){
+  try{ if(typeof indivBracket!=='function') return '';
+    const b=indivBracket(name);
+    if(!b || b==='—') return '';
+    return ' <span style="color:#D35400;font-weight:700;font-size:11px;">'+b+'</span>';
+  }catch(e){ return ''; }
+}
 function renderModalList(players) {
   // MULTI mode (singles bulk entry): checkboxes + a confirm bar.
   // SINGLE mode (everything else): unchanged one-tap behaviour.
@@ -5546,13 +5556,13 @@ function renderModalList(players) {
       const on = _pmChosen.has(p) ? ' checked' : '';
       return '<label class="player-modal-item" style="display:flex;align-items:center;gap:10px;cursor:pointer;">'
         + '<input type="checkbox" class="pm-chk" data-name="' + esc + '"' + on + ' onchange="pmToggle(this)" style="width:17px;height:17px;flex:none;">'
-        + '<span>' + p + '</span></label>';
+        + '<span>' + p + pmBandTag(p) + '</span></label>';
     }).join('');
     pmUpdateBtn();
     return;
   }
   document.getElementById('playerModalList').innerHTML = players.map(p =>
-    '<div class="player-modal-item" onclick="selectModalPlayer(\'' + p.replace(/'/g, "\\'") + '\')">' + p + '</div>'
+    '<div class="player-modal-item" onclick="selectModalPlayer(\'' + p.replace(/'/g, "\\'") + '\')">' + p + pmBandTag(p) + '</div>'
   ).join('');
 }
 
@@ -6431,7 +6441,7 @@ async function loadTournamentSheet(tournament, division) {
 
   function standings(maxRound) {
     const t = {};
-    entries.forEach(e => t[e.seed] = { seed: e.seed, p: 0, sets: 0, gw: 0, gd: 0 });
+    entries.forEach(e => t[e.seed] = { seed: e.seed, p: 0, sets: 0, gw: 0, gd: 0, gmd: 0 });
     // Only group-stage / Swiss fixtures feed standings — NEVER knockout playoff (round_type
     // 'ko') or finals fixtures, even though a playoff's round-1 KO sits at round 1 too.
     fixtures.filter(f => f.round_type !== 'ko' && f.round_type !== 'plate' && f.round_type !== 'final'
@@ -6441,9 +6451,10 @@ async function loadTournamentSheet(tournament, division) {
       t[f.seed_a].sets += f.sets_a; t[f.seed_b].sets += f.sets_b;
       t[f.seed_a].gw += f.games_a; t[f.seed_b].gw += f.games_b;
       t[f.seed_a].gd += (f.games_a - f.games_b); t[f.seed_b].gd += (f.games_b - f.games_a);
+      t[f.seed_a].gmd += (f.sets_a - f.sets_b);   t[f.seed_b].gmd += (f.sets_b - f.sets_a);
     });
     let arr = Object.values(t);
-    arr.sort((x, y) => y.sets - x.sets || y.gd - x.gd || y.gw - x.gw || x.seed - y.seed);
+    arr.sort((x, y) => y.sets - x.sets || y.gmd - x.gmd || y.gd - x.gd || y.gw - x.gw || x.seed - y.seed);
     return arr;
   }
   const maxPlayed = Math.max(0, ...fixtures.filter(f => f.round < 90 && f.round_type!=='ko' && f.round_type!=='plate' && f.sets_a != null).map(f => f.round));
@@ -7022,12 +7033,12 @@ async function loadTournamentSheet(tournament, division) {
   function standingsTableFor(seedSet){
     const full = standings(maxPlayed);                 // already computed over all played fixtures
     const rows = full.filter(r => seedSet.has(r.seed)); // restrict to this group's seeds
-    let h = '<table><thead><tr><th class="num">#</th><th>Team</th><th class="num">P</th><th class="num">Games Won</th><th class="num">G.Won</th><th class="num">G.Diff</th></tr></thead><tbody>';
+    let h = '<table><thead><tr><th class="num">#</th><th>Team</th><th class="num">P</th><th class="num">Games Won</th><th class="num">Game Diff</th><th class="num">Point Diff</th></tr></thead><tbody>';
     rows.forEach((r, i) => {
       h += '<tr><td class="num"><span class="rank' + (i === 0 ? ' top' : '') + '">' + (i + 1) + '</span></td>'
         + '<td><b>' + tName(r.seed) + '</b></td>'
         + '<td class="num">' + r.p + '</td><td class="num"><b>' + r.sets + '</b></td>'
-        + '<td class="num">' + r.gw + '</td><td class="num">' + (r.gd >= 0 ? '+' : '') + r.gd + '</td></tr>';
+        + '<td class="num">' + (r.gmd >= 0 ? '+' : '') + r.gmd + '</td><td class="num">' + (r.gd >= 0 ? '+' : '') + r.gd + '</td></tr>';
     });
     h += '</tbody></table>';
     return h;
@@ -7038,13 +7049,13 @@ async function loadTournamentSheet(tournament, division) {
     // Single group: one table (unchanged behaviour).
     if(!_hasGroups){
       return '<div class="card"><h2>Standings <span class="tm-divtag">' + TM_DIVISION + '</span></h2>'
-        + '<p class="sub">After Round ' + maxPlayed + ' · Sets won → Game diff → Games won</p>'
+        + '<p class="sub">After Round ' + maxPlayed + ' · Games won → Game diff → Point diff</p>'
         + standingsTableFor(new Set(entries.map(e=>e.seed))) + '</div>';
     }
     // Split: one table PER GROUP, each ranked internally. Tier names when tiered.
     const tiers = etTierNames ? etTierNames(_groupLabels.length) : [];
     let h = '<div class="card"><h2>Group Standings <span class="tm-divtag">' + TM_DIVISION + '</span></h2>'
-      + '<p class="sub">Each group ranked on its own · Sets won → Game diff → Games won</p>';
+      + '<p class="sub">Each group ranked on its own · Games won → Game diff → Point diff</p>';
     _groupLabels.forEach((L, i) => {
       const seedSet = new Set(entries.filter(e=>e.grp===L).map(e=>e.seed));
       h += '<div style="font-size:13px;font-weight:800;color:#D35400;margin:12px 0 4px;">Group ' + L
@@ -7636,7 +7647,7 @@ async function tmEnterFixtureResult(fixtureId){
   const setsRaw = prompt('Score for:\n'+teamA+'  vs  '+teamB+'\n\nEnter SETS as A-B (e.g. 2-1):', cur);
   if(setsRaw===null) return;
   const sm = setsRaw.trim().match(/^(\d+)\s*-\s*(\d+)$/);
-  if(!sm){ alert('Please enter sets as A-B, e.g. 2-1'); return; }
+  if(!sm){ alert('Please enter games as A-B, e.g. 2-1'); return; }
   const sa=Number(sm[1]), sb=Number(sm[2]);
   const gamesRaw = prompt('Total GAMES as A-B (e.g. 13-9). Leave blank if not tracked:', (f.games_a!=null?(f.games_a+'-'+f.games_b):''));
   if(gamesRaw===null) return;
@@ -7673,6 +7684,7 @@ async function tmEnterFixtureResult(fixtureId){
    //   <div id="enterTournamentScreen" class="screen">…header…<div id="etBody"></div></div>
    ============================================================================ */
 async function showEnterTournament(preselect) {
+  if(typeof mdrLoadDob==='function' && Object.keys(MDR_DOB).length===0){ try{ await mdrLoadDob(); }catch(e){} }
   showScreen('enterTournamentScreen');
   const body = document.getElementById('etBody');
   body.innerHTML = '<div class="loading">Loading…</div>';
