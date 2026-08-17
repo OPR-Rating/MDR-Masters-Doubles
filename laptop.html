@@ -41,7 +41,9 @@
   .opr-logo { font-size: 44px; margin-bottom: 10px; }
   .btn-enter { width: calc(100% - 0px); padding: 19px; background: linear-gradient(180deg, #FFA033, #E8791A); color: #2a1400; border: none; border-radius: 14px; font-size: 18px; font-weight: 800; cursor: pointer; margin: 0 0 16px; position: relative; z-index: 5; letter-spacing: 0.3px; box-shadow: 0 10px 26px rgba(211,84,0,0.5), inset 0 1px 0 rgba(255,255,255,0.55); transition: transform 0.1s; }
   .btn-enter:active { transform: scale(0.98); }
-  .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+  .menu-grid { display: flex; gap: 6px; margin-top: 6px; }
+.menu-grid .menu-btn { flex:1 1 0; min-width:0; padding:12px 4px; font-size:11px; }
+@media(max-width:560px){ .menu-grid{flex-wrap:wrap;} .menu-grid .menu-btn{flex:1 1 30%;} }
   /* Club panel (shows beside Recent Matches on laptop; stacks below on phone) */
   .home-lower { margin-top: 4px; }
   @media (max-width: 899px){
@@ -567,6 +569,8 @@
 @media(max-width:520px){.mdr-catrow{flex-wrap:wrap;}.mdr-catrow .mdr-pill{flex:1 1 40%;}}
 
 
+
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -585,8 +589,9 @@
     <div class="screen-content home-content">
       <button class="btn-enter" onclick="showScreen('entryScreen')">✚ Enter your match score here</button>
       <div class="menu-grid">
-        <button class="menu-btn" onclick="showMdrProfiles()">Profiles</button>
-        <button class="menu-btn" onclick="showScreen('laddersScreen')">Current Ratings and Ladders</button>
+        <button class="menu-btn" onclick="showMdrProfiles()">Profiles and Divisions</button>
+        <button class="menu-btn" onclick="showScreen('clubLadderScreen')">Challenge Ladders</button>
+        <button class="menu-btn" onclick="showScreen('laddersScreen')">Current Ratings</button>
         <button class="menu-btn" onclick="showScreen('tournamentScreen')">Current Tournaments</button>
         <button class="menu-btn" onclick="showScreen('aboutScreen')">About MDR</button>
       </div>
@@ -623,10 +628,6 @@
     <div class="screen-content">
       <div style="background:#D35400;color:#fff;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:15px;font-weight:700;text-align:center;letter-spacing:0.3px;">Overall Ratings &amp; Ladder Standings</div>
       <div style="background:rgba(211,84,0,.08);border:1px solid rgba(211,84,0,.30);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#0d4a38;line-height:1.5;text-align:center;">Overall standings for ALL matches recorded in both Social and Tournament records</div>
-      <div class="ladders-group-title">Club Ladder</div>
-      <div class="ladders-grid one-col">
-        <button class="menu-btn" style="border-color:#F59E0B;box-shadow:0 0 10px rgba(196,224,0,0.35);font-weight:700;" onclick="showScreen('clubLadderScreen')">🪜 Good ’ol Club Ladder</button>
-      </div>
       <div class="ladders-group-title">Pair Ratings</div>
       <div class="ladders-grid">
         <button class="menu-btn" onclick="loadLadder('mens','Men\u2019s Pairs')">Men's Pairs</button>
@@ -721,7 +722,7 @@
       <button class="back-btn" onclick="mdrIOBack()">&#8592;</button>
       <h1 id="mdrIOTitle">Individual Overall</h1>
     </div>
-    <div class="screen-content">
+    <div class="screen-content ladder-scroll" style="overflow:auto;padding-top:0;">
       <div id="mdrIOtable2"></div>
     </div>
   </div>
@@ -731,7 +732,7 @@
       <button class="back-btn" onclick="mdrDivBackToGender()">&#8592;</button>
       <h1 id="mdrDivCatTitle">Divisions</h1>
     </div>
-    <div class="screen-content">
+    <div class="screen-content ladder-scroll" style="overflow:auto;padding-top:0;">
       <div id="mdrCreateTeamWrap2"></div>
       <div id="mdrDivBrackets2"></div>
       <div id="mdrDivTable2"></div>
@@ -743,8 +744,8 @@
       <button class="back-btn" onclick="mdrSearchBack()">&#8592;</button>
       <h1>Team Profile</h1>
     </div>
-    <div class="screen-content">
-      <input type="text" class="search-box" id="playerSearch" placeholder="Search your name..." oninput="filterPlayers()" style="position:sticky;top:0;z-index:30;background:#fff;">
+    <div class="screen-content ladder-scroll" style="overflow:auto;padding-top:0;">
+      <input type="text" class="search-box" id="playerSearch" placeholder="Search your name..." oninput="filterPlayers()" style="position:sticky;top:0;z-index:30;background:#fff;padding:8px 0;margin:0;">
       <ul class="player-list" id="playerList"></ul>
     </div>
   </div>
@@ -841,9 +842,9 @@
       </div>
 
       <div class="about-section">
-        <h3>What Is OSR?</h3>
-        <p>Open Squash Ratings (OSR) is an independent, transparent rating system designed for club squash — singles and doubles alike. Built on the proven OSR engine, OSR rates every player and every pairing on their own merits, for the realities of club squash where partners change, formats vary, and match volume is limited.</p>
-        <p>OSR is open by design. Every formula, every weighting, and every adjustment threshold is explainable to any player, administrator, or partner. There are no black boxes.</p>
+        <h3>What Is MDR?</h3>
+        <p>Masters Doubles Rating (MDR) is an independent, transparent rating system built for masters squash doubles. It rates every player and every pairing on their own merits, and organises teams into age divisions (35+ through 80+) — a pair's division is set by its younger partner, following World Masters rules. It suits the realities of club and masters squash, where partners change, formats vary, and match volume is limited.</p>
+        <p>MDR is open by design. Every formula, every weighting, and every adjustment threshold is explainable to any player, administrator, or partner. There are no black boxes. Alongside ratings and divisions, MDR runs a challenge-based club ladder for each age group.</p>
       </div>
 
       <div class="about-section">
@@ -894,7 +895,7 @@
 
   <!-- GOOD OL' CLUB LADDER -->
   <div class="screen hidden" id="clubLadderScreen">
-    <div class="header"><button class="back-btn" onclick="showScreen('laddersScreen')">&larr;</button><h1>Good ’ol Club Ladder</h1></div>
+    <div class="header"><button class="back-btn" onclick="showScreen('laddersScreen')">&larr;</button><h1>Challenge Ladders</h1></div>
     <div class="screen-content"><div id="clBody"></div></div>
   </div>
 
@@ -2870,7 +2871,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'ODR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "MDR v2026.08.15-33";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
+const OPR_VERSION = "MDR v2026.08.15-46";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -2948,7 +2949,10 @@ function addExportBar(containerId, label, title){
   bar.style.cssText='display:flex;gap:8px;justify-content:flex-end;margin:14px 0 10px;';
   bar.innerHTML='<button onclick="exportTableCSV(\''+containerId+'\',\''+label+'\')" style="background:#1A9FFF;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;">⬇ Excel</button>'
     +'<button onclick="printTable(\''+containerId+'\',\''+title+'\')" style="background:#5B2BD6;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;">🖨 Print / PDF</button>';
-  box.insertBefore(bar, box.firstChild);
+  const tbl = box.querySelector('table');
+  // place the bar directly above the table it belongs to (not at the very top of the page/section)
+  if(tbl && tbl.parentNode){ tbl.parentNode.insertBefore(bar, tbl); }
+  else { box.insertBefore(bar, box.firstChild); }
 }
 
 function printTable(containerId, title){
@@ -3211,6 +3215,7 @@ async function loadLadder(type, title) {
       html += '</tbody></table>';
       if(!data.length) html += '<div style="padding:16px;color:#9a8578;text-align:center;">'+(type==='allsorts'?'No pairs have played an All Sorts match yet.':'No pairs in this category yet.')+'</div>';
       document.getElementById('ladderContent').innerHTML = html || '<div class="empty-state"><p>Nothing yet.</p></div>';
+      try{ addExportBar('ladderContent','Ratings', title||'Ratings & Ladder'); }catch(e){}
       return;
     }
     if(false){
@@ -3329,7 +3334,9 @@ async function mdrIndivOverall(g){
   rows.forEach((r,i)=>{ const mv=r.cur-r.seed; const mvStr=(mv>0?'+':'')+mv; const col=mv>=0?'#1e8449':'#c0392b';
     h+=`<tr><td>${rankBadge(i+1)}</td><td>${r.name}</td><td>${r.cur}</td><td>${(r.cur/200).toFixed(1)}</td><td style="color:${col};">${mvStr}</td><td style="color:#D35400;font-weight:800;font-size:12px;">${indivBracket(r.name)}</td></tr>`; });
   h+='</tbody></table>';
-  (document.getElementById('mdrIOtable2')||document.getElementById('mdrIOtable')).innerHTML=h;
+  const _iot=(document.getElementById('mdrIOtable2')||document.getElementById('mdrIOtable'));
+  _iot.innerHTML=h;
+  try{ addExportBar(_iot.id, 'Individual_Overall', 'Individual Overall'); }catch(e){}
 }
 
 // --- Divisions: gender -> Create Team + bracket buttons -> registered-pairs table ---
@@ -3497,7 +3504,9 @@ async function mdrRenderDivTable(){
     const catCell = _overall ? `<td style="font-weight:800;color:#7E3200;">${x.cat}</td>` : '';
     h+=`<tr><td>${rankBadge(i+1)}</td><td>${x.name}</td>${catCell}<td>${r!=null?r:'—'}</td><td>${r!=null?(r/200).toFixed(1):'—'}</td><td style="color:#D35400;font-weight:800;font-size:12px;">${x.div}</td></tr>`; });
   h+='</tbody></table>';
-  (document.getElementById('mdrDivTable2')||document.getElementById('mdrDivTable')).innerHTML='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">'+h+'</div>';
+  const _dt = (document.getElementById('mdrDivTable2')||document.getElementById('mdrDivTable'));
+  _dt.innerHTML=h;
+  try{ addExportBar(_dt.id, 'Divisions', 'Divisions — '+(_mdrDivLabel||'')); }catch(e){}
 }
 
 async function showProfileSearch() {
@@ -3534,13 +3543,17 @@ async function showPartnerships(indivId){
     const [teams, pr, myMatches] = await Promise.all([
       sbGet(`players?select=id,name,gender,initial_rating,member_a_id,member_b_id&club_id=eq.${CLUB_ID}&or=(member_a_id.eq.${indivId},member_b_id.eq.${indivId})`).then(r=>r||[]),
       sbGet(`player_results?select=name,current_rating,initial_rating&club_id=eq.${CLUB_ID}`).then(r=>r||[]),
-      sbGet(`matches?select=t1p1,t2p1,t1_sets,t2_sets,t1_games,t2_games&club_id=eq.${CLUB_ID}`).then(r=>r||[])
+      sbGet(`matches?select=t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,match_type&club_id=eq.${CLUB_ID}`).then(r=>r||[])
     ]);
     const _noTeams = !teams.length;
     const curBy={}; pr.forEach(r=>{ curBy[r.name]={cur:r.current_rating, init:r.initial_rating}; });
     const catLabel=c=>c==='M'?"Men's":c==='L'?'Ladies':c==='X'?'Mixed':'';
     const catCls=c=>c==='M'?'odr-cat-M':c==='L'?'odr-cat-L':'odr-cat-X';
     const teamNames = teams.map(t=>t.name);
+    // Which of this player's teams have played an All Sorts match (for the extra pill).
+    const _asPairNames = new Set();
+    (function(){ const nm=(a,b)=>{ a=(a||'').trim(); b=(b||'').trim(); if(!a) return null; if(!b) return a; return [a,b].sort((x,y)=>x.localeCompare(y)).join(' & '); };
+      myMatches.forEach(m=>{ if((m.match_type||'')==='All Sorts'){ const n1=nm(m.t1p1,m.t1p2), n2=nm(m.t2p1,m.t2p2); if(n1)_asPairNames.add(n1); if(n2)_asPairNames.add(n2); } }); })();
     const mcount={}; myMatches.forEach(m=>{ if(m.t1p1) mcount[m.t1p1]=(mcount[m.t1p1]||0)+1; if(m.t2p1) mcount[m.t2p1]=(mcount[m.t2p1]||0)+1; });
     // ----- INDIVIDUAL DERIVED CARD (seed + sum of this person's pair moves) -----
     const seed = ind && ind.seed_rating!=null ? ind.seed_rating : 1500;
@@ -3566,7 +3579,7 @@ async function showPartnerships(indivId){
         <div style="font-size:20px;font-weight:800;">${who}</div>
         <div style="font-size:40px;font-weight:800;line-height:1.1;margin:6px 0;">${curRating}</div>
         <div style="font-size:14px;opacity:.95;">Level ${level}</div>
-        <div style="font-size:13px;margin-top:4px;opacity:.95;">${cat}${cat?' · ':''}<span style="color:${mvColI};font-weight:800;">${mvStrI}</span> since inception</div>
+        <div style="font-size:13px;margin-top:4px;opacity:.95;">${cat}${(nmForRating && indivBracket(nmForRating))?(cat?' · ':'')+indivBracket(nmForRating):''}${cat||indivBracket(nmForRating)?' · ':''}<span style="color:${mvColI};font-weight:800;">${mvStrI}</span> since inception</div>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:14px;">
         <div style="flex:1;background:#fdf3ec;border-radius:10px;padding:10px;text-align:center;"><div style="font-weight:800;color:#D35400;">${matches}</div><div style="font-size:11px;color:#7a6045;">Matches</div></div>
@@ -3588,7 +3601,7 @@ async function showPartnerships(indivId){
       return `<div onclick="window._profileFrom='partnerships';loadProfile('${t.name.replace(/'/g,"\\'")}','${t.gender}')" style="cursor:pointer;background:#fff;border:1px solid rgba(211,84,0,.16);border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.05);">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
           <span style="font-weight:700;flex:1;">${t.name}</span>
-          <span class="odr-cat-pill ${catCls(t.gender)}">${catLabel(t.gender)}</span>
+          <span class="odr-cat-pill ${catCls(t.gender)}">${catLabel(t.gender)}</span>${(t.gender!=='A' && _asPairNames.has(t.name))?'<span class="odr-cat-pill odr-cat-A" style="margin-left:4px;">All Sorts</span>':''}
         </div>
         <div style="display:flex;gap:16px;font-size:13px;color:#5a4636;">
           <span>Rating <b style="color:#D35400;">${r.cur}</b></span>
@@ -3915,6 +3928,7 @@ function profileTabsHTML(active){
 async function loadProfileIndividual(name, gender) {
   document.getElementById('profileContent').innerHTML = profileTabsHTML('individual') + '<div class="loading"><span class="loading-spinner">⏳</span>Loading...</div>';
   try {
+    if(typeof mdrLoadDob==='function' && Object.keys(MDR_DOB).length===0){ try{ await mdrLoadDob(); }catch(e){} }
     // Pair rating/category/initial from player_results (ODR: the entity is a pair).
     const prArr = await sbGet(`player_results?select=current_rating,initial_rating,gender,form_npi,form_sets&name=eq.${encodeURIComponent(name)}&club_id=eq.${CLUB_ID}`);
     const pr = prArr[0]||{};
@@ -4014,7 +4028,7 @@ async function loadProfileIndividual(name, gender) {
         <div class="profile-name">${name}</div>
         <div class="profile-rating">${rating}</div>
         <div class="profile-level">Level ${level}</div>
-        <div class="profile-rank">${catLabel}${moveStr?` · <span style="color:${moveCol};font-weight:800;">${moveStr}</span> Move`:''}</div>
+        <div class="profile-rank">${catLabel}${(function(){try{const _i=name.indexOf(' & ');if(_i<0)return '';const _a=name.slice(0,_i),_b=name.slice(_i+3);const _d=pairBracketByNames(_a,_b);return _d?(' · '+_d):'';}catch(e){return '';}})()}${moveStr?` · <span style="color:${moveCol};font-weight:800;">${moveStr}</span> Move`:''}</div>
       </div>
       <div class="stat-grid">
         <div class="stat-card"><div class="stat-value">${matchesPlayed}</div><div class="stat-label">Matches</div></div>
@@ -4247,7 +4261,7 @@ async function loadActiveTournaments(){
   const s=document.createElement('option');
   s.value='Social'; s.textContent='Social';
   sel.appendChild(s);
-  // Ladder Match option (feeds the Good 'ol Club Ladder)
+  // Ladder Match option (feeds the Challenge Ladders)
   const lm=document.createElement('option');
   lm.value='Ladder Match'; lm.textContent='Ladder Match';
   sel.appendChild(lm);
@@ -4314,7 +4328,7 @@ async function loadActiveTournaments(){
 
       if(!singlesActive && !doublesActive){
         // (2) No ladders active at all — warn immediately, disable Format.
-        alert('There are no active ladders at this club yet.\n\nA ladder (singles or doubles) must first be created and activated on the “Good ’ol Club Ladder” page before ladder matches can be entered. You can still enter a Social match in the meantime.');
+        alert('There are no active ladders at this club yet.\n\nA ladder (singles or doubles) must first be created and activated on the “Challenge Ladders” page before ladder matches can be entered. You can still enter a Social match in the meantime.');
         if(fmtSel){ fmtSel.disabled=true; }
         allowed=[]; window._eventDivs=[["",""]];
       } else {
@@ -4564,13 +4578,21 @@ function populateSel(sel,players,exclude,selected){
   });
 }
 
-function renderStep2(){
+async function renderStep2(){
   setStep(2);
   // LADDER MATCH: pick whole teams from the ladder (no building pairs by hand).
   // Singles ladder matches skip this and use the normal 2-player entry below.
+  if(typeof mdrLoadDob==='function' && Object.keys(MDR_DOB).length===0){ try{ await mdrLoadDob(); }catch(e){} }
   if((entryData.event||'')==='Ladder Match' && entryData.format!=='singles' && Array.isArray(window._ladderTeams) && window._ladderTeams.length){
     const teams = window._ladderTeams; // [{p1,p2,position}]
-    const opts = teams.map((t,i)=>`<option value="${i}">${t.position}. ${t.p1} & ${t.p2}</option>`).join('');
+    // Group the single dropdown by age division (younger partner). Order: Open, 35+..80+.
+    const _order = ['Open','35+','40+','45+','50+','55+','60+','65+','70+','75+','80+'];
+    const _byDiv = {};
+    teams.forEach((t,i)=>{ const d=pairBracketByNames(t.p1,t.p2)||'Open'; (_byDiv[d]=_byDiv[d]||[]).push({t,i}); });
+    const opts = _order.filter(d=>_byDiv[d] && _byDiv[d].length).map(d=>{
+      const inner=_byDiv[d].map(o=>`<option value="${o.i}">${o.t.position}. ${o.t.p1} & ${o.t.p2}</option>`).join('');
+      return `<optgroup label="${d==='Open'?'Open (under 35)':d}">${inner}</optgroup>`;
+    }).join('');
     document.getElementById('entryContent').innerHTML=`
       <p class="sub" style="margin-bottom:10px;">Pick the two ladder teams that played. Only registered ${entryData.type} ladder pairs are listed.</p>
       <div class="team-card">
@@ -5494,7 +5516,7 @@ async function openPlayerModal(fieldId, label) {
   const idx = ids.indexOf(fieldId);
   const exclude = sel.filter((v,j) => j !== idx && v !== '');
 
-  // LADDER MATCH: only players who are on this category's Good 'ol Ladder may be picked.
+  // LADDER MATCH: only players who are on this category's Challenge Ladders may be picked.
   if ((entryData.event||'') === 'Ladder Match' && window._ladderEligible) {
     players = players.filter(p => window._ladderEligible.has(p));
   }
@@ -8486,19 +8508,20 @@ let CL_TAB = 'ladder';  // 'ladder' or 'enter'
 async function renderClubLadder(){
   const body = document.getElementById('clBody');
   const cat = CL_CAT;
-  let rows = await sbGet(`club_ladder?select=*&club_id=eq.${CLUB_ID}&category=eq.${encodeURIComponent(cat)}&order=position.asc`) || [];
-  // AGE BRACKET (masters): teams are fixed; bracket is computed from their names' DOBs.
-  if(typeof mdrLoadDob==='function' && Object.keys(MDR_DOB).length===0){ try{ await mdrLoadDob(); }catch(e){} }
+  // Fire the ladder rows, activation state, and DOB cache in PARALLEL (was 3 sequential
+  // round-trips = the open stutter). DOB only loads if not already cached.
+  const _dobP = (typeof mdrLoadDob==='function' && Object.keys(MDR_DOB).length===0) ? mdrLoadDob().catch(()=>{}) : Promise.resolve();
+  const [rowsRaw, stRaw] = await Promise.all([
+    sbGet(`club_ladder?select=*&club_id=eq.${CLUB_ID}&category=eq.${encodeURIComponent(cat)}&order=position.asc`),
+    sbGet(`club_ladder_state?select=activated&club_id=eq.${CLUB_ID}&category=eq.${encodeURIComponent(cat)}&limit=1`).catch(()=>null),
+    _dobP
+  ]);
+  let rows = rowsRaw || [];
   window._clRowsAll = rows;
   const _clb = window._clBracket || 'all';
   if(_clb!=='all'){ rows = rows.filter(r=> pairBracketByNames(r.p1, r.p2)===_clb ); }
   window._clRows = rows;
-  // activation state for this category
-  let activated = false;
-  try {
-    const st = await sbGet(`club_ladder_state?select=activated&club_id=eq.${CLUB_ID}&category=eq.${encodeURIComponent(cat)}&limit=1`);
-    activated = !!(st && st.length && st[0].activated);
-  } catch(e){}
+  const activated = !!(stRaw && stRaw.length && stRaw[0].activated);
   window._clActivated = activated;
   const singles = clIsSingles(cat);
   const sel = 'width:100%;padding:11px;border:1.5px solid rgba(211,84,0,.22);border-radius:9px;font-size:15px;box-sizing:border-box;margin-bottom:10px;';
@@ -8548,7 +8571,7 @@ async function renderClubLadder(){
     } else {
       // Division column only on the ALL view (mixed age groups); on a specific bracket it's redundant.
       const _showDiv = ((window._clBracket||'all')==='all');
-      bodyHTML += '<table><thead><tr><th class="num">#</th><th>Team</th>'+(_showDiv?'<th>Div</th>':'')+'<th class="num"></th></tr></thead><tbody>';
+      bodyHTML += '<table class="ladder-table"><thead><tr><th class="num">#</th><th>Team</th>'+(_showDiv?'<th>Div</th>':'')+'<th class="num"></th></tr></thead><tbody>';
       rows.forEach(r=>{
         const _divCell = _showDiv ? ('<td style="color:#D35400;font-weight:800;font-size:12px;">'+pairBracketByNames(r.p1,r.p2)+'</td>') : '';
         bodyHTML += '<tr><td class="num"><span class="seed'+(r.position===1?' s1':'')+'">'+r.position+'</span></td>'
