@@ -28,7 +28,7 @@
   .screen-content { flex: 1; overflow-y: auto; padding: 16px; }
 
   /* Home */
-  .home-hero { background:linear-gradient(rgba(7,26,18,0.0),rgba(7,26,18,0.0)),radial-gradient(120% 90% at 78% 8%, rgba(255,160,60,.20), transparent 55%),radial-gradient(130% 100% at 12% 96%, rgba(211,84,0,.55), transparent 60%),#1c110a; padding:0; margin:0; text-align:center; position:relative; }
+  .home-hero { background:linear-gradient(rgba(7,26,18,0.0),rgba(7,26,18,0.0)),radial-gradient(120% 90% at 78% 8%, rgba(255,160,60,.20), transparent 55%),radial-gradient(130% 100% at 12% 96%, rgba(211,84,0,.55), transparent 60%),#33200f; padding:0; margin:0; text-align:center; position:relative; }
   .screen-content.home-content { padding-top: 0; margin-top: -26px; position: relative; z-index: 5; }
   .home-hero .hero-logo-panel { display:block; width:100%; margin:0; background:transparent; border-radius:0; padding:42px 16px 40px; color:#fff; position:relative; }
   .home-hero .hero-logo-panel::before { display:none; content:""; position:absolute; top:-30px; right:-30px; width:120px; height:120px; background:radial-gradient(circle, rgba(255,160,60,0.25), transparent 70%); border-radius:50%; }
@@ -78,11 +78,6 @@
   .ladder-table th:first-child { text-align: left !important; padding-left: 4px; padding-right: 4px; }
   .ladder-table th:nth-child(2) { text-align: left !important; }
   .ladder-table td { padding: 7px 12px; border-bottom: 1px solid #f0f0f0; white-space: nowrap; text-align: center; }
-  /* Challenge/Club Ladder standings: keep long pair names + the × inside the card border.
-     Scoped to .cl-standings so other ladder/rating tables are untouched. */
-  .cl-standings { width: 100%; table-layout: fixed; }
-  .cl-standings td { white-space: normal; word-break: break-word; }
-  .cl-standings td.num { white-space: nowrap; width: 1%; }
   .ladder-table td:first-child { text-align: left !important; padding-left: 4px; padding-right: 4px; }
   .ladder-table td:nth-child(2) { text-align: left !important; }
   .ladder-table tr:nth-child(even) td { background: rgba(211,84,0,.12); }
@@ -2876,7 +2871,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'ODR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "MDR v2026.08.15-64";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
+const OPR_VERSION = "MDR v2026.08.15-65";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -4631,29 +4626,47 @@ function populateSel(sel,players,exclude,selected){
   });
 }
 
+function mdrFillLadderTeams(){
+  const teams = window._ladderTeams || [];
+  const selEl = document.getElementById('ladderBracketSel');
+  const brk = selEl ? selEl.value : 'all';
+  let list = (brk==='all') ? teams.map((t,i)=>({t,i}))
+    : teams.map((t,i)=>({t,i})).filter(o=> (pairBracketByNames(o.t.p1,o.t.p2)||'Open')===brk );
+  // Always numeric (overall position) order, so the ladder reads 1,2,3… regardless of bracket.
+  list = list.slice().sort((a,b)=> (a.t.position||9999) - (b.t.position||9999));
+  const _bkt=(t)=>{ const b=pairBracketByNames(t.p1,t.p2)||'Open'; return b; };
+  const opts = list.map(o=>`<option value="${o.i}">${o.t.position}. ${o.t.p1} & ${o.t.p2} (${_bkt(o.t)})</option>`).join('');
+  ['ladderT1','ladderT2'].forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    const keep=el.value;
+    el.innerHTML='<option value="">Select team...</option>'+opts;
+    if(keep && el.querySelector('option[value="'+keep+'"]')) el.value=keep;
+  });
+}
 async function renderStep2(){
   setStep(2);
   // LADDER MATCH: pick whole teams from the ladder (no building pairs by hand).
   // Singles ladder matches skip this and use the normal 2-player entry below.
   if(typeof mdrLoadDob==='function' && Object.keys(MDR_DOB).length===0){ try{ await mdrLoadDob(); }catch(e){} }
   if((entryData.event||'')==='Ladder Match' && entryData.format!=='singles' && Array.isArray(window._ladderTeams) && window._ladderTeams.length){
-    const teams = window._ladderTeams; // [{p1,p2,position}]
-    // Group the single dropdown by age division (younger partner). Order: Open, 35+..80+.
+    const teams = window._ladderTeams; // [{p1,p2,position}] in overall order
+    // Bracket is a FILTER only — overall positions are always kept (never re-ranked). "All" = everyone.
     const _order = ['Open','35+','40+','45+','50+','55+','60+','65+','70+','75+','80+'];
-    const _byDiv = {};
-    teams.forEach((t,i)=>{ const d=pairBracketByNames(t.p1,t.p2)||'Open'; (_byDiv[d]=_byDiv[d]||[]).push({t,i}); });
-    const opts = _order.filter(d=>_byDiv[d] && _byDiv[d].length).map(d=>{
-      const inner=_byDiv[d].map(o=>`<option value="${o.i}">${o.t.position}. ${o.t.p1} & ${o.t.p2}</option>`).join('');
-      return `<optgroup label="${d==='Open'?'Open (under 35)':d}">${inner}</optgroup>`;
-    }).join('');
+    const _present = _order.filter(d=> teams.some(t=> (pairBracketByNames(t.p1,t.p2)||'Open')===d ));
+    const _brkOpts = ['<option value="all">All (overall ladder)</option>']
+      .concat(_present.map(d=>`<option value="${d}">${d==='Open'?'Open (under 35)':d}</option>`)).join('');
     document.getElementById('entryContent').innerHTML=`
-      <p class="sub" style="margin-bottom:10px;">Pick the two ladder teams that played. Only registered ${entryData.type} ladder pairs are listed.</p>
+      <p class="sub" style="margin-bottom:10px;">Pick the two ladder teams that played. Choose a bracket to narrow the list — everyone keeps their overall ladder position.</p>
+      <div class="field" style="margin-bottom:12px;">
+        <label>Show</label>
+        <select id="ladderBracketSel" onchange="mdrFillLadderTeams()" style="width:100%;padding:12px;border:1.5px solid rgba(211,84,0,.22);border-radius:9px;font-size:15px;">${_brkOpts}</select>
+      </div>
       <div class="team-card">
         <div class="team-label"><span>1</span>Team 1</div>
         <div class="field">
           <label>Ladder team</label>
           <select id="ladderT1" style="width:100%;padding:12px;border:1.5px solid rgba(211,84,0,.22);border-radius:9px;font-size:15px;">
-            <option value="">Select team...</option>${opts}
+            <option value="">Select team...</option>
           </select>
         </div>
       </div>
@@ -4662,7 +4675,7 @@ async function renderStep2(){
         <div class="field">
           <label>Ladder team</label>
           <select id="ladderT2" style="width:100%;padding:12px;border:1.5px solid rgba(211,84,0,.22);border-radius:9px;font-size:15px;">
-            <option value="">Select team...</option>${opts}
+            <option value="">Select team...</option>
           </select>
         </div>
       </div>
@@ -4673,6 +4686,7 @@ async function renderStep2(){
       </div>
       <button class="btn" onclick="markerFromEntry()" style="width:100%;margin-top:10px;background:linear-gradient(180deg,#3a2416,#20130a);color:#FFA033;border:1.5px solid rgba(255,160,60,.35);box-shadow:0 8px 22px rgba(126,50,0,.35);">◉ Live Marker (score the match live)</button>
       <button class="btn" onclick="watchOpen()" style="width:100%;margin-top:8px;background:linear-gradient(180deg,#241509,#160d06);color:#e8d9cc;border:1.5px solid rgba(255,160,60,.22);box-shadow:0 6px 18px rgba(0,0,0,.3);font-size:15px;">👁 Watch a live match</button>`;
+    mdrFillLadderTeams();
     return;
   }
   // SINGLES LADDER MATCH: pick two players from the singles ladder, shown in
@@ -8662,7 +8676,7 @@ async function renderClubLadder(){
     } else {
       // Division column only on the ALL view (mixed age groups); on a specific bracket it's redundant.
       const _showDiv = ((window._clBracket||'all')==='all');
-      bodyHTML += '<table class="ladder-table cl-standings"><thead><tr><th class="num">#</th><th>Team</th>'+(_showDiv?'<th>Div</th>':'')+'<th class="num"></th></tr></thead><tbody>';
+      bodyHTML += '<table class="ladder-table"><thead><tr><th class="num">#</th><th>Team</th>'+(_showDiv?'<th>Div</th>':'')+'<th class="num"></th></tr></thead><tbody>';
       rows.forEach(r=>{
         const _divCell = _showDiv ? ('<td style="color:#D35400;font-weight:800;font-size:12px;">'+pairBracketByNames(r.p1,r.p2)+'</td>') : '';
         bodyHTML += '<tr><td class="num"><span class="seed'+(r.position===1?' s1':'')+'">'+r.position+'</span></td>'
