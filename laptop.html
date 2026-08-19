@@ -477,6 +477,7 @@
   .mk-pick{width:100%;padding:11px 12px;border:1.5px solid rgba(211,84,0,.22);border-radius:10px;font-size:15px;background:#fff;color:#2a1400;text-align:left;cursor:pointer;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;font-family:inherit;}
   .mk-pick .mk-ph{color:#b9a595;}
   .mk-pick.set{border-color:#E8791A;font-weight:600;}
+
   .mk-seg{display:flex;gap:6px;background:#f1e7de;border-radius:10px;padding:4px;}
   .mk-seg button{flex:1;padding:9px 4px;border:none;background:none;color:#9a8578;font-size:13px;font-weight:700;border-radius:7px;cursor:pointer;font-family:inherit;}
   .mk-seg button.on{background:#D35400;color:#fff;}
@@ -2871,7 +2872,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'ODR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "MDR v2026.08.15-65";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
+const OPR_VERSION = "MDR v2026.08.15-68";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -4626,6 +4627,7 @@ function populateSel(sel,players,exclude,selected){
   });
 }
 
+function _ldrTeamLabel(o){ const b=pairBracketByNames(o.t.p1,o.t.p2)||'Open'; return `${o.t.position}. ${o.t.p1} & ${o.t.p2} (${b})`; }
 function mdrFillLadderTeams(){
   const teams = window._ladderTeams || [];
   const selEl = document.getElementById('ladderBracketSel');
@@ -4634,14 +4636,59 @@ function mdrFillLadderTeams(){
     : teams.map((t,i)=>({t,i})).filter(o=> (pairBracketByNames(o.t.p1,o.t.p2)||'Open')===brk );
   // Always numeric (overall position) order, so the ladder reads 1,2,3… regardless of bracket.
   list = list.slice().sort((a,b)=> (a.t.position||9999) - (b.t.position||9999));
-  const _bkt=(t)=>{ const b=pairBracketByNames(t.p1,t.p2)||'Open'; return b; };
-  const opts = list.map(o=>`<option value="${o.i}">${o.t.position}. ${o.t.p1} & ${o.t.p2} (${_bkt(o.t)})</option>`).join('');
+  window._ldrList = list;   // current filtered+sorted list for the picker overlay
+  // If the currently-chosen team is no longer in the filtered list, clear it.
   ['ladderT1','ladderT2'].forEach(id=>{
-    const el=document.getElementById(id); if(!el) return;
-    const keep=el.value;
-    el.innerHTML='<option value="">Select team...</option>'+opts;
-    if(keep && el.querySelector('option[value="'+keep+'"]')) el.value=keep;
+    const hid=document.getElementById(id), btn=document.getElementById(id+'btn'); if(!hid||!btn) return;
+    const cur=hid.value;
+    if(cur!=='' && !list.some(o=>String(o.i)===String(cur))){ hid.value=''; }
+    _ldrSyncBtn(id);
   });
+}
+function _ldrSyncBtn(id){
+  const hid=document.getElementById(id), btn=document.getElementById(id+'btn'); if(!hid||!btn) return;
+  const teams=window._ladderTeams||[]; const v=hid.value;
+  if(v===''){ btn.innerHTML='<span class="mk-ph">Select team…</span><span>›</span>'; btn.classList.remove('set'); return; }
+  const o={t:teams[Number(v)],i:Number(v)};
+  btn.innerHTML=`<span>${_ldrTeamLabel(o)}</span><span>›</span>`; btn.classList.add('set');
+}
+// Team-picker — REUSES the exact same overlay as the match name picker (mkOv/mkSheet),
+// with the same search bar and option styling, so it's uniform with social/tournament pickers.
+function ldrPick(id){
+  const list=window._ldrList||[];
+  const otherId = id==='ladderT1'?'ladderT2':'ladderT1';
+  const takenV = document.getElementById(otherId) ? document.getElementById(otherId).value : '';
+  window._ldrPickId=id; window._ldrPickTaken=takenV;
+  const title = (id==='ladderT1'?'Team 1':'Team 2');
+  const opts = _ldrPickOpts(list, takenV, '');
+  document.getElementById('mkSheet').innerHTML =
+    `<h3>Select ${title}</h3><div style="font-size:11px;color:#9a8578;margin:-4px 0 8px;">Ladder order — tap a team.</div>`+
+    `<input class="mk-search" id="ldrSearch" placeholder="Type to search…" oninput="ldrFilterPick()" autocomplete="off">`+
+    `<div class="mk-plist" id="ldrPlist">${opts}</div>`+
+    `<button class="mk-cancel" onclick="mkCloseOv()">Cancel</button>`;
+  document.getElementById('mkOv').classList.add('on');
+}
+function _ldrPickOpts(list, takenV, q){
+  q=(q||'').toLowerCase().trim();
+  let items=list;
+  if(q) items=list.filter(o=>{
+    // match if EITHER partner's name STARTS with the typed text (like the name picker), not mid-word.
+    const p1=(o.t.p1||'').toLowerCase(), p2=(o.t.p2||'').toLowerCase();
+    return p1.startsWith(q) || p2.startsWith(q);
+  });
+  if(!items.length) return '<div style="padding:14px;color:#9a8578;font-size:13px;">No teams found.</div>';
+  return items.map(o=>{ const dis=(String(o.i)===String(takenV));
+    return `<button class="mk-popt" style="${dis?'opacity:.35;':''}" ${dis?'':`onclick="ldrPicked(${o.i})"`}>${_ldrTeamLabel(o)}${dis?' · in match':''}</button>`;
+  }).join('');
+}
+function ldrFilterPick(){
+  const q=document.getElementById('ldrSearch').value||'';
+  document.getElementById('ldrPlist').innerHTML=_ldrPickOpts(window._ldrList||[], window._ldrPickTaken, q);
+}
+function ldrPicked(idx){
+  const id=window._ldrPickId; const hid=document.getElementById(id);
+  if(hid){ hid.value=String(idx); _ldrSyncBtn(id); }
+  mkCloseOv();
 }
 async function renderStep2(){
   setStep(2);
@@ -4665,18 +4712,16 @@ async function renderStep2(){
         <div class="team-label"><span>1</span>Team 1</div>
         <div class="field">
           <label>Ladder team</label>
-          <select id="ladderT1" style="width:100%;padding:12px;border:1.5px solid rgba(211,84,0,.22);border-radius:9px;font-size:15px;">
-            <option value="">Select team...</option>
-          </select>
+          <input type="hidden" id="ladderT1" value="">
+          <button type="button" class="mk-pick" id="ladderT1btn" onclick="ldrPick('ladderT1')"><span class="mk-ph">Select team…</span><span>›</span></button>
         </div>
       </div>
       <div class="team-card">
         <div class="team-label"><span>2</span>Team 2</div>
         <div class="field">
           <label>Ladder team</label>
-          <select id="ladderT2" style="width:100%;padding:12px;border:1.5px solid rgba(211,84,0,.22);border-radius:9px;font-size:15px;">
-            <option value="">Select team...</option>
-          </select>
+          <input type="hidden" id="ladderT2" value="">
+          <button type="button" class="mk-pick" id="ladderT2btn" onclick="ldrPick('ladderT2')"><span class="mk-ph">Select team…</span><span>›</span></button>
         </div>
       </div>
       <div id="err2" class="error-msg">Please select both teams.</div>
