@@ -543,6 +543,8 @@
   /* marker player modal (its own, simple) */
   .mk-ov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1200;display:none;align-items:flex-end;justify-content:center;}
   .mk-ov.on{display:flex;}
+  .mk-ov.ldr-top{align-items:flex-start;}
+  .mk-ov.ldr-top .mk-sheet{border-radius:0 0 18px 18px;border-top:none;border-bottom:2px solid #D35400;max-height:88vh;padding:16px 14px;}
   .mk-sheet{width:100%;max-width:480px;background:#fff;border-radius:18px 18px 0 0;padding:16px 14px calc(16px + env(safe-area-inset-bottom));border-top:2px solid #D35400;max-height:80vh;display:flex;flex-direction:column;}
   .mk-sheet h3{font-size:14px;font-weight:800;margin-bottom:10px;color:#2a1400;}
   .mk-search{width:100%;padding:11px 12px;border:1.5px solid rgba(211,84,0,.25);border-radius:10px;font-size:16px;margin-bottom:10px;outline:none;}
@@ -1407,7 +1409,7 @@ function mkFilterPick(){
   document.getElementById('mkPlist').innerHTML = list.map(n=>{ const dis=MK._taken.includes(n); return `<button class="mk-popt" style="${dis?'opacity:.35;':''}" ${dis?'':`onclick="mkPicked('${n.replace(/'/g,"\\'")}')"`}>${n}${dis?' · in match':''}</button>`; }).join('');
 }
 function mkPicked(name){ MK.players[MK.pickSlot]=name; mkCloseOv(); mkRenderSetup(); }
-function mkCloseOv(){ document.getElementById('mkOv').classList.remove('on'); }
+function mkCloseOv(){ const o=document.getElementById('mkOv'); o.classList.remove('on'); o.classList.remove('ldr-top'); }
 
 // ---------- start / core ----------
 async function mkStart(){
@@ -2872,7 +2874,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'ODR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "MDR v2026.08.15-68";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
+const OPR_VERSION = "MDR v2026.08.15-73";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -3623,6 +3625,78 @@ async function showPartnerships(indivId){
         if(_pos>=0) _rankStrI=' (Rank '+(_pos+1)+')';
       }
     }catch(e){ _rankStrI=''; }
+    // ===== PROFILE CHARTS (radar + donut) — computed from myMatches already loaded, no fetch =====
+    // Buckets: clear/close win & loss. "Close" = decided by 1 game (set) OR total point margin small.
+    let _cW=0,_ccW=0,_ccL=0,_cL=0, _oppSum=0,_oppN=0;
+    myMatches.filter(isMine).forEach(m=>{
+      const mineIsT1=teamNames.includes(m.t1p1);
+      const sf=mineIsT1?(m.t1_sets||0):(m.t2_sets||0), sa=mineIsT1?(m.t2_sets||0):(m.t1_sets||0);
+      const gf=mineIsT1?(m.t1_games||0):(m.t2_games||0), ga=mineIsT1?(m.t2_games||0):(m.t1_games||0);
+      const won = sf>sa;
+      const setMargin=Math.abs(sf-sa), gMargin=Math.abs(gf-ga);
+      const close = (setMargin<=1) || (gMargin>0 && gMargin<=3);
+      if(won){ if(close)_ccW++; else _cW++; } else { if(close)_ccL++; else _cL++; }
+      // opponent strength: avg live rating of the two opposing players
+      const oA=mineIsT1?m.t2p1:m.t1p1, oB=mineIsT1?m.t2p2:m.t1p2;
+      [oA,oB].forEach(n=>{ if(n){ let r=null; try{ if(OPR.indiv) r=OPR.indiv(n);}catch(e){} if(r!=null){_oppSum+=r;_oppN++;} } });
+    });
+    const _totM=_cW+_ccW+_ccL+_cL;
+    // Club average matches per active player (from mcount — all club matches already loaded; no fetch).
+    const _mcVals=Object.values(mcount).filter(v=>v>0);
+    const _clubAvgM=_mcVals.length?(_mcVals.reduce((a,b)=>a+b,0)/_mcVals.length):0;
+    const _avgOpp=_oppN>0?Math.round(_oppSum/_oppN):null;
+    // Radar axes 0-100
+    const _clamp=v=>Math.max(0,Math.min(100,v));
+    const rWin   = setsPlayed>0?_clamp(setsWon/setsPlayed*100):0;
+    const rScrap = _totM>0?_clamp(_ccW/_totM*100 + (_cW/_totM*100)*0.4):0;   // winning, esp. close wins
+    const rCompose = _totM>0?_clamp(100-(_ccL/_totM*100)):50;                // few close losses = composed
+    const rOpp   = _avgOpp!=null?_clamp((_avgOpp-1200)/8):50;                // 1200->0, 2000->100
+    const rAct   = _clubAvgM>0?_clamp(matches/_clubAvgM*50):_clamp(matches*8); // 50 = club average
+    const rEff   = _clamp(50 + (parseFloat(gdps)||0)*12);                    // pt-diff/game around 0 -> 50
+    const _axes=[['Win %',rWin],['Scrap',rScrap],['Compose',rCompose],['Opp Str',rOpp],['Active',rAct],['Pt Eff',rEff]];
+
+    // ---- Radar SVG ----
+    function _radarSVG(axes){
+      const cx=100,cy=95,R=70,N=axes.length;
+      const pt=(i,r)=>{ const a=-Math.PI/2 + i*2*Math.PI/N; return [cx+Math.cos(a)*r, cy+Math.sin(a)*r]; };
+      let grid=''; [0.25,0.5,0.75,1].forEach(f=>{ let p=axes.map((_,i)=>pt(i,R*f).join(',')).join(' '); grid+=`<polygon points="${p}" fill="none" stroke="#e7ddd3" stroke-width="1"/>`; });
+      let spokes='',labels='';
+      axes.forEach((ax,i)=>{ const [x,y]=pt(i,R); spokes+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#e7ddd3" stroke-width="1"/>`;
+        const [lx,ly]=pt(i,R+14); labels+=`<text x="${lx}" y="${ly}" font-size="8" fill="#7a6045" text-anchor="middle" dominant-baseline="middle">${ax[0]}</text>`; });
+      const poly=axes.map((ax,i)=>pt(i,R*ax[1]/100).join(',')).join(' ');
+      return `<svg viewBox="0 0 200 200" width="100%" style="max-width:230px;height:auto;display:block;margin:0 auto;">${grid}${spokes}<polygon points="${poly}" fill="rgba(211,84,0,.28)" stroke="#D35400" stroke-width="2"/>${labels}</svg>`;
+    }
+    // ---- Donut SVG ----
+    function _donutSVG(cW,ccW,ccL,cL){
+      const tot=cW+ccW+ccL+cL; const cx=70,cy=70,r=52,sw=22, C=2*Math.PI*r;
+      if(tot===0) return `<svg viewBox="0 0 140 140" width="100%" style="max-width:150px;height:auto;display:block;margin:0 auto;"><circle cx="70" cy="70" r="52" fill="none" stroke="#eee" stroke-width="22"/><text x="70" y="74" font-size="11" fill="#9a8578" text-anchor="middle">No matches</text></svg>`;
+      const segs=[['#1e8449',cW],['#7ed957',ccW],['#ffb84d',ccL],['#c0392b',cL]];
+      let off=0, arcs='';
+      segs.forEach(([col,v])=>{ if(v<=0)return; const len=v/tot*C; arcs+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${col}" stroke-width="${sw}" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" transform="rotate(-90 ${cx} ${cy})"/>`; off+=len; });
+      return `<svg viewBox="0 0 140 140" width="100%" style="max-width:150px;height:auto;display:block;margin:0 auto;">${arcs}<text x="70" y="66" font-size="20" font-weight="800" fill="#D35400" text-anchor="middle">${tot}</text><text x="70" y="82" font-size="9" fill="#7a6045" text-anchor="middle">matches</text></svg>`;
+    }
+    const _chartsHTML = matches>0 ? `
+      <button type="button" onclick="(function(b){var p=document.getElementById('chartSnap');var open=p.style.display!=='none';p.style.display=open?'none':'block';b.innerHTML=(open?'\u25B8':'\u25BE')+' Chart Snapshot';})(this)" style="width:100%;text-align:left;background:#fdf3ec;border:1.5px solid #eaddd0;border-radius:10px;padding:11px 14px;margin-bottom:10px;font-size:14px;font-weight:800;color:#B8480A;cursor:pointer;font-family:inherit;">\u25B8 Chart Snapshot</button>
+      <div id="chartSnap" style="display:none;background:#fdf3ec;border-radius:12px;padding:14px;margin-bottom:14px;">
+        <div style="font-weight:800;color:#B8480A;font-size:15px;text-align:center;margin-bottom:2px;">Overall Performance</div>
+        <div style="font-size:10px;color:#7a6045;text-align:center;margin-bottom:10px;line-height:1.5;">
+          <b>Win %</b> games won · <b>Scrap</b> winning, esp. close · <b>Compose</b> few close losses · <b>Opp Str</b> strength of opponents · <b>Active</b> matches vs club average · <b>Pt Eff</b> point margin per game
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center;">
+          <div style="flex:1 1 200px;min-width:180px;text-align:center;">${_radarSVG(_axes)}</div>
+          <div style="flex:1;min-width:150px;text-align:center;">
+            ${_donutSVG(_cW,_ccW,_ccL,_cL)}
+            <div style="display:flex;flex-wrap:wrap;gap:4px 10px;justify-content:center;margin-top:6px;font-size:10px;color:#5a4636;">
+              <span><span style="display:inline-block;width:8px;height:8px;background:#1e8449;border-radius:2px;"></span> Clear win ${_cW}</span>
+              <span><span style="display:inline-block;width:8px;height:8px;background:#7ed957;border-radius:2px;"></span> Close win ${_ccW}</span>
+              <span><span style="display:inline-block;width:8px;height:8px;background:#ffb84d;border-radius:2px;"></span> Close loss ${_ccL}</span>
+              <span><span style="display:inline-block;width:8px;height:8px;background:#c0392b;border-radius:2px;"></span> Clear loss ${_cL}</span>
+            </div>
+            ${_avgOpp!=null?`<div style="font-size:10px;color:#7a6045;margin-top:4px;">Avg opponent rating: <b>${_avgOpp}</b></div>`:''}
+          </div>
+        </div>
+      </div>` : '';
+
     const indivCard=`
       <div style="background:linear-gradient(135deg,#D35400,#B8480A);border-radius:16px;padding:20px;margin-bottom:8px;color:#fff;text-align:center;">
         <div style="font-size:20px;font-weight:800;">${who}</div>
@@ -3637,6 +3711,7 @@ async function showPartnerships(indivId){
         <div style="flex:1;background:#fdf3ec;border-radius:10px;padding:10px;text-align:center;"><div style="font-weight:800;color:#D35400;">${winPct}%</div><div style="font-size:11px;color:#7a6045;">Win %</div></div>
         <div style="flex:1;background:#fdf3ec;border-radius:10px;padding:10px;text-align:center;"><div style="font-weight:800;color:#D35400;">${gdps}</div><div style="font-size:11px;color:#7a6045;">Pt Diff/Game</div></div>
       </div>
+      ${_chartsHTML}
       <div style="font-weight:700;color:#5a4636;margin-bottom:8px;font-size:14px;">Partnerships</div>`;
     const rows = teams.map(t=>{
       const pd=curBy[t.name]||{}; const cur=(pd.cur!=null?Math.round(pd.cur):Math.round(t.initial_rating));
@@ -4666,7 +4741,7 @@ function ldrPick(id){
     `<input class="mk-search" id="ldrSearch" placeholder="Type to search…" oninput="ldrFilterPick()" autocomplete="off">`+
     `<div class="mk-plist" id="ldrPlist">${opts}</div>`+
     `<button class="mk-cancel" onclick="mkCloseOv()">Cancel</button>`;
-  document.getElementById('mkOv').classList.add('on');
+  const _ov=document.getElementById('mkOv'); _ov.classList.add('on'); _ov.classList.add('ldr-top');
 }
 function _ldrPickOpts(list, takenV, q){
   q=(q||'').toLowerCase().trim();
