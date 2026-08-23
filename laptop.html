@@ -298,6 +298,7 @@
   .bkt-match{border:1px solid #d9cbe8;border-radius:9px;overflow:hidden;cursor:pointer;transition:box-shadow .15s;background:#fff;}
   .bkt-match:hover{box-shadow:0 2px 8px rgba(108,52,131,.18);}
   .bkt-bye{cursor:default;opacity:.75;}
+  .bkt-ghost{visibility:hidden;border:none;}  /* staggered col-1 bye slot */
   .bkt-team{display:flex;align-items:center;gap:6px;padding:6px 9px;font-size:12.5px;border-bottom:1px solid #f0ecf4;}
   .bkt-team:last-child{border-bottom:none;}
   .bkt-win{background:#eafaf0;font-weight:700;color:#1e7a34;}
@@ -2222,7 +2223,7 @@ async function odrRederiveAll(){
     }
     if(!changes.length){ msg.innerHTML='<span style="color:#1e8449;">All pairs already match their components\u2019 current seeds. Nothing to change.</span>'; return; }
     // confirm with a before/after summary
-    const preview = changes.slice(0,12).map(c=>c.p.name+': '+c.from+' \u2192 '+c.to).join('\n')+(changes.length>12?('\n\u2026and '+(changes.length-12)+' more'):'');
+    const preview = changes.slice(0,12).map(c=>c.p.name+': '+c.from+' → '+c.to).join('\n')+(changes.length>12?('\n\u2026and '+(changes.length-12)+' more'):'');
     if(!confirm('This will overwrite the initial rating of '+changes.length+' pair'+(changes.length===1?'':'s')+' and replay all their matches:\n\n'+preview+'\n\nContinue?')) { msg.innerHTML='Cancelled.'; return; }
     msg.innerHTML='Re-deriving '+changes.length+' pair'+(changes.length===1?'':'s')+'\u2026';
     // write the new initial + season_initial for each changed pair
@@ -2234,7 +2235,7 @@ async function odrRederiveAll(){
     // refresh the table after a short delay so the new ratings are visible in place.
     fetch(SB_URL+'/functions/v1/recompute',{ method:'POST', headers:{ apikey:SB_ANON, Authorization:'Bearer '+SB_ANON, 'Content-Type':'application/json' }, body:JSON.stringify({ club_id:odrCid() }) }).catch(()=>{});
     let out='<span style="color:#1e8449;">Re-derived '+changes.length+' pair'+(changes.length===1?'':'s')+'. Recomputing ratings in the background\u2026 (this table refreshes in a few seconds).</span><br>';
-    out+=changes.slice(0,20).map(c=>c.p.name+': <b>'+c.from+' \u2192 '+c.to+'</b>').join('<br>');
+    out+=changes.slice(0,20).map(c=>c.p.name+': <b>'+c.from+' → '+c.to+'</b>').join('<br>');
     if(changes.length>20) out+='<br>\u2026and '+(changes.length-20)+' more';
     msg.innerHTML=out;
     await odrLoadPairsRoom();                 // immediate: shows the new INITIALS at once
@@ -2874,7 +2875,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'ODR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "MDR v2026.08.15-73";  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
+const OPR_VERSION = "MDR v2026.08.23-74";  // ALIGNED with ODR/OPR (standardisation only, MDR age/DOB logic untouched): (1) BOX-CENTRIC KNOCKOUT — no bye rows, column 1 staggered; pairs with MDR-TOURNAMENT v2026.08.23-BC1. (2) AS-ENTERED NAMES — new pairs named as entered (was A→Z); Existing/New probe order-independent; each match carries display_t1/display_t2 (sides exactly as typed) shown in Recent Matches with fallback to the stored pair name. Needs: matches.display_t1/display_t2 columns (SQL) + MDR submit_match v2026.08.23-D1.  // RR FINISH CHOICE at generation (single-group): added etRRFinishHTML/etRRFinishSet + wired into etGroupConfigHTML (both no-splits and single-group-within-splits) + playoffSize on cfg — brings OSR to parity with OTR. Post-completion build still confirms top 2 or 4 (unchanged). Multi-group snake/block config, allocation engine, and 2/4 prompt untouched. // Handicap entry is now SEAMLESS (Option B): entering a handicap event's score on the main +enter screen silently routes to the safe tournament path (matches teams→fixture→record_fixture_result, server-gated). Same familiar screen; the rating engine (submit_match/recompute) is NEVER called for handicap events. No Rounds-tab detour needed.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -4496,7 +4497,7 @@ let recentMatchesData = [];
 async function loadRecent(){
   try{
     // Read the latest 15 matches from Supabase, newest first
-    const data = await sbGet(`matches?select=match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,set_scores&order=match_date.desc,id.desc&limit=15&club_id=eq.${CLUB_ID}`);
+    const data = await sbGet(`matches?select=match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,set_scores,display_t1,display_t2&order=match_date.desc,id.desc&limit=15&club_id=eq.${CLUB_ID}`);
     recentMatchesData = data;
     if(data.length===0){document.getElementById('homeRecentList').innerHTML='<div style="color:#888;font-size:12px;">No matches yet</div>';return;}
     renderRecentList();
@@ -4586,7 +4587,7 @@ function renderRecentList(){
         <span class="match-type">${m.match_type||''}</span>${tag}
         <span style="color:#D35400;font-size:11px;">▼</span>
       </div>
-      <div class="match-teams"><strong>${pairName(m.t1p1,m.t1p2)}</strong> ${m.t1_sets||0}-${m.t2_sets||0} <strong>${pairName(m.t2p1,m.t2p2)}</strong></div>
+      <div class="match-teams"><strong>${m.display_t1||pairName(m.t1p1,m.t1p2)}</strong> ${m.t1_sets||0}-${m.t2_sets||0} <strong>${m.display_t2||pairName(m.t2p1,m.t2p2)}</strong></div>
       <div class="match-detail" id="detail_${idx}" style="display:none;margin-top:6px;padding-top:6px;border-top:1px solid rgba(211,84,0,.30);"></div>
     </div>`;}).join('');
 }
@@ -5137,7 +5138,9 @@ async function odrEnsurePair(nameA, nameB){
   if(!b) throw new Error('"'+nameB+'" is not a registered individual');
   const aid=a.id, bid=b.id;
   const lo=aid<bid?aid:bid, hi=aid<bid?bid:aid;
-  const canonName=[nameA,nameB].sort((x,y)=>x.localeCompare(y)).join(' & ');
+  // AS ENTERED (v74, aligned with ODR/OPR): the pair is named in the order entered this
+  // first time — no forced A→Z. Duplicates prevented by the member-ID lookup below.
+  const canonName=nameA+' & '+nameB;
   // already exists? Match the pair whichever ORDER its members are stored — an older row may
   // have member_a_id/member_b_id swapped (e.g. 110/94 vs our 94/110). Checking only lo,hi would
   // miss it and birth a DUPLICATE pair row. This or() matches both orders.
@@ -5546,6 +5549,9 @@ async function doSubmit(btn){  const err=document.getElementById('err4');
     const match={
       match_date:entryData.date, match_type:entryData.type, event:entryData.event||'Social',
       t1p1:_pairName1, t1p2:null, t2p1:_pairName2, t2p2:null,   // pair-vs-pair (partners null)
+      // AS ENTERED (v74, cosmetic only): sides exactly as typed — player 1 first.
+      display_t1:(entryData.t1p1+' & '+entryData.t1p2),
+      display_t2:(entryData.t2p1+' & '+entryData.t2p2),
       t1_sets:entryData.t1sets, t2_sets:entryData.t2sets,
       t1_games:entryData.t1games, t2_games:entryData.t2games,
       set_scores:setParts.join(','),
@@ -5908,7 +5914,14 @@ async function odrBuildIndivRatings(){
     await OPR.load();
     ODR_PAIR_RATING={};
     const pairs = await sbGet(`players?select=name,member_a_id,member_b_id&club_id=eq.${CLUB_ID}&or=(member_a_id.not.is.null)`) || [];
-    pairs.forEach(p=>{ ODR_PAIR_RATING[p.name]=OPR.pairByName(p.name); });
+    pairs.forEach(p=>{
+      const v=OPR.pairByName(p.name);
+      ODR_PAIR_RATING[p.name]=v;
+      // v74: ALSO key under the A→Z form so the Existing/New probe (sorted form) hits
+      // regardless of how the pair is named.
+      const mm=String(p.name).split(' & ');
+      if(mm.length===2){ ODR_PAIR_RATING[mm.map(x=>x.trim()).sort((x,y)=>x.localeCompare(y)).join(' & ')]=v; }
+    });
   }catch(e){}
 }
 // Update the little rating line under each side. If the two people already have a pair,
@@ -7158,13 +7171,18 @@ async function loadTournamentSheet(tournament, division) {
         + '<span class="bkt-nm">'+(bName||'&nbsp;')+hcB+'</span><span class="bkt-sc">'+scoreB+'</span></div>'
       + '</div>';
   }
-  function koTreeHTML(rounds, title, isPlate){
+  function koTreeHTML(rounds, title, isPlate, staggerR1){
     if(!rounds || !rounds.length) return '';
     let cols='';
     rounds.forEach((rd,ri)=>{
       const label = koRoundName(rd.length, isPlate);
+      // BOX-CENTRIC (v74): staggered column 1 — a bye slot renders as an invisible
+      // spacer (same footprint, no "vs BYE" box); the bye seed appears seated in col 2.
       cols += '<div class="bkt-colwrap"><div class="bkt-rlabel">'+label+'</div><div class="bkt-col">'
-        + rd.map(m=>koBox(m,isPlate)).join('') + '</div></div>';
+        + rd.map(m=>{
+            if(staggerR1 && ri===0 && m.b===0) return '<div class="bkt-match bkt-ghost"></div>';
+            return koBox(m,isPlate);
+          }).join('') + '</div></div>';
     });
     // champion banner
     const finalRd = rounds[rounds.length-1];
@@ -7207,7 +7225,7 @@ async function loadTournamentSheet(tournament, division) {
 
     const mainRounds = computeMainBracket();
     const plateRounds = computePlateBracket();
-    const main = koTreeHTML(mainRounds, _isPlayoff ? 'Knockout Playoff' : 'Main Draw', false);
+    const main = koTreeHTML(mainRounds, _isPlayoff ? 'Knockout Playoff' : 'Main Draw', false, !_isPlayoff);
     const plate = koTreeHTML(plateRounds, 'Plate (first-round losers)', true);
     let h = '<div class="card bkt-card" id="bktPrintArea">'
       + '<div class="bkt-head"><h2>'+(_isPlayoff?'Playoff':'Knockout Draw')+' <span class="tm-divtag">'+tmDivLabel(TM_DIVISION)+'</span></h2>'
@@ -8464,12 +8482,10 @@ async function tmGenerateKnockoutDraw(tournament, division){
     rows.push({ tournament, division, round:1, round_type:'ko',
       band: (r1.size>=32?'R'+r1.size:label), seed_a:a, seed_b:b });
   });
-  // Byes: record as a played fixture where the bye seed "wins" vs seed 0 (BYE marker),
-  // so the bracket shows the top seed advancing. seed_b=0 => BYE (rendered as such).
-  r1.byes.forEach(sd=>{
-    rows.push({ tournament, division, round:1, round_type:'ko',
-      band:'bye', seed_a:sd, seed_b:0 });
-  });
+  // BOX-CENTRIC (v74): byes are NOT written as fixtures. A bye seed starts pre-seeded
+  // in its column-2 box — both the display (computeMainBracket) and the edge fn's
+  // advanceKnockout compute bye positions from the seed list, so a bye needs no row.
+  // (Old draws with stored seed_b=0 bye rows still render/advance correctly.)
   if(!TM_ADMIN_PIN){ TM_ADMIN_PIN = prompt('Admin PIN to generate the knockout draw:')||''; }
   if(!TM_ADMIN_PIN) return;
   // CRITICAL: persist the seeds first. seedEntries() only numbers them in memory;
