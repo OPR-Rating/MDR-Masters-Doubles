@@ -25,7 +25,11 @@
   .screen { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #fff; display: flex; flex-direction: column; transition: transform 0.3s ease; }
   .screen.hidden { transform: translateX(100%); }
   .screen.active { transform: translateX(0); }
-  .screen-content { flex: 1; overflow-y: auto; padding: 16px; }
+  /* Breathing room at the foot of every scrolling screen. The flat 16px left the last
+     table row flush against the phone's bottom edge — worst when installed as an app
+     (no browser bar below) and on handsets with a gesture bar. env(safe-area-inset-bottom)
+     is 0 where it doesn't apply, so desktop and older browsers are unaffected. */
+  .screen-content { flex: 1; overflow-y: auto; padding: 16px 16px calc(34px + env(safe-area-inset-bottom)); }
 
   /* Home */
   .home-hero { background:linear-gradient(rgba(7,26,18,0.0),rgba(7,26,18,0.0)),radial-gradient(120% 90% at 78% 8%, rgba(255,160,60,.20), transparent 55%),radial-gradient(130% 100% at 12% 96%, rgba(211,84,0,.55), transparent 60%),#33200f; padding:0; margin:0; text-align:center; position:relative; }
@@ -2901,7 +2905,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'ODR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "MDR v2026.09.03-79";  // DOUBLE-TAP GUARD ON SUBMIT MATCH: the button is disabled on the FIRST tap, before any network call, so a weak signal can no longer let repeated taps save duplicate matches. Built ON TOP of the live file — nothing from any parallel session removed.
+const OPR_VERSION = "MDR v2026.09.03-81";  // TABLE BOTTOM SPACING: every scrolling screen now has proper padding at the foot (plus the phone’s safe-area inset), so the last row of ratings/ladder/form tables no longer sits flush against the bottom edge. CSS only. Includes all prior work.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -7224,8 +7228,14 @@ async function loadTournamentSheet(tournament, division) {
     const bye = m.b===0;
     const ready = (m.a!=null && m.b!=null && m.b!==0 && !played && m.fx && m.fx.id);
     const emptyA = (m.a==null), emptyB=(m.b==null && m.b!==0);
-    const scoreA = played? m.fx.sets_a : '';
-    const scoreB = played? m.fx.sets_b : '';
+    // SCORE ORIENTATION FIX: the box's top/bottom slots are in canonical BRACKET order,
+    // which is not always the fixture's seed_a/seed_b order (the r1 map is keyed both
+    // ways, so a box can hold the fixture reversed). Printing sets_a against the top slot
+    // therefore showed each score against the wrong team in those boxes. Orient by seed —
+    // the winner highlight already did this correctly and is unchanged.
+    const _aIsFxA = !(m.fx && m.fx.seed_a!=null && m.a!=null && m.fx.seed_a !== m.a);
+    const scoreA = played? (_aIsFxA ? m.fx.sets_a : m.fx.sets_b) : '';
+    const scoreB = played? (_aIsFxA ? m.fx.sets_b : m.fx.sets_a) : '';
     // SQUASH handicap head-start under each team name on the bracket (OPR parity).
     let hcA = '', hcB = '';
     if(window._tmIsHandicap && m.a!=null && m.b!=null && m.b!==0){
