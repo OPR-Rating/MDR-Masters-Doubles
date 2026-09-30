@@ -2888,7 +2888,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'ODR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "MDR v2026.09.30-83";  // MANUAL PAIR CREATION REMOVED FROM ADMIN (ported from OPR v56): Create a pair, Bulk create pairs and Re-derive all pairs are gone — they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide. Pairs are born automatically at match entry. Current pairs list untouched; underlying JS left in place unreferenced. Includes all prior work.
+const OPR_VERSION = "MDR v2026.09.30-84";  // MANUAL PAIR CREATION REMOVED FROM ADMIN (ported from OPR v56): Create a pair, Bulk create pairs and Re-derive all pairs are gone — they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide. Pairs are born automatically at match entry. Current pairs list untouched; underlying JS left in place unreferenced. Includes all prior work.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -5541,7 +5541,12 @@ async function routeHandicapEntry(ed, err, btn){
 async function submitMatch(){
   const btn=document.getElementById('submitBtn');
   if(btn){
-    if(btn.disabled) return;              // a submission is already running — ignore the tap
+    /* v83: TWO GUARDS WERE STACKED. submitMatchUX (the newer wrapper) disables the button and sets
+       dataset.busy BEFORE calling this function — so this older guard, ported from OPR v46, saw a button
+       that its own caller had just disabled and returned silently on the FIRST tap. Nothing submitted,
+       no message, button restored: exactly "the button does nothing".
+       The wrapper is now the only guard. This one defers to it. */
+    if(btn.disabled && btn.dataset.busy!=='1') return;   // a submission is already running — ignore the tap
     btn.disabled=true;
     btn.textContent='Checking\u2026';
   }
