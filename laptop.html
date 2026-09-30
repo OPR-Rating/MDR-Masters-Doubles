@@ -2888,7 +2888,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'ODR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "MDR v2026.09.03-82";  // MANUAL PAIR CREATION REMOVED FROM ADMIN (ported from OPR v56): Create a pair, Bulk create pairs and Re-derive all pairs are gone — they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide. Pairs are born automatically at match entry. Current pairs list untouched; underlying JS left in place unreferenced. Includes all prior work.
+const OPR_VERSION = "MDR v2026.09.30-83";  // MANUAL PAIR CREATION REMOVED FROM ADMIN (ported from OPR v56): Create a pair, Bulk create pairs and Re-derive all pairs are gone — they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide. Pairs are born automatically at match entry. Current pairs list untouched; underlying JS left in place unreferenced. Includes all prior work.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -5194,15 +5194,25 @@ async function submitMatchUX(btn){
   let proceeded=false;
   try{
     proceeded = await submitMatch();
-  } catch(e){ proceeded=false; }
+  } catch(e){
+    /* v83: the error used to be swallowed here, so a genuine fault looked like a dead button.
+       It is shown to the member now — they can read it out, and it goes to the console too. */
+    proceeded=false;
+    try{
+      var _e4=document.getElementById('err4');
+      if(_e4){
+        _e4.innerHTML='<strong>\u26a0\ufe0f Not submitted.</strong><br>'+((e&&e.message)?e.message:'Something went wrong. Please try again.');
+        _e4.style.display='block';
+      }
+      console.error('submitMatch threw:', e);
+    }catch(_){}
+  }
   // Only restore the button if submitMatch did NOT proceed (validation failed, or a confirm
   // was cancelled). On success it returns true and doSubmit owns the button + page navigation,
   // so we leave it as "Verifying & submitting…" — no flicker, no re-tap window.
   if(!proceeded && btn && document.getElementById('submitBtn')===btn && btn.isConnected){
-    btn.disabled = false;
-    btn.style.opacity = '';
-    btn.innerHTML = btn.dataset._label || '\u2713 Submit Match';
-    btn.dataset.busy='';
+    if(typeof mdrBtnFree==='function') mdrBtnFree(btn);
+    else { btn.disabled=false; btn.style.opacity=''; btn.innerHTML=btn.dataset._label||'\u2713 Submit Match'; btn.dataset.busy=''; }
   }
 }
 // Inner: original logic. Returns true ONLY when it has handed off to doSubmit().
@@ -5449,7 +5459,7 @@ async function _submitMatchInner(){
 // is server-gated to skip the master matches write + recompute for handicap events). The
 // rating engine (submit_match/recompute) is never called. Returns true if handled.
 async function routeHandicapEntry(ed, err, btn){
-  const done = (msg, ok)=>{ err.innerHTML = msg; err.style.display='block'; btn.disabled=false; btn.textContent='\u2713 Submit Match'; return true; };
+  const done = (msg, ok)=>{ err.innerHTML = msg; err.style.display='block'; mdrBtnFree(btn); return true; };
   const tour = (ed.event||'').trim();
   const div = ed.type;
   const isSingles = ed.format==='singles';
@@ -5513,7 +5523,7 @@ async function routeHandicapEntry(ed, err, btn){
   const t2 = isSingles?ed.t2p1:(ed.t2p1+' / '+ed.t2p2);
   err.style.display='none';
   const box=document.getElementById('entryResult')||document.getElementById('err4');
-  btn.disabled=false; btn.textContent='\u2713 Submit Match';
+  mdrBtnFree(btn);
   alert('🎯 Handicap result saved (no rating effect):\n\n'+t1+'  '+ed.t1sets+'–'+ed.t2sets+'  '+t2+'\n\nEvent: '+tour+' · '+div+'\nSee it in the tournament standings and the front-page “Recent Handicap Results”.');
   // reset the entry form back to start, like a normal successful submit
   if(typeof showScreen==='function') showScreen('homeScreen');
@@ -5541,14 +5551,28 @@ async function submitMatch(){
   }finally{
     // Only re-enable if we never reached doSubmit (validation failed, or a confirm was
     // cancelled). Once handed off, doSubmit owns the button.
-    if(!handed && btn){ btn.disabled=false; btn.textContent='\u2713 Submit Match'; }
+    if(!handed && btn){ mdrBtnFree(btn); }
   }
 }
 
+
+// v83: HAND THE BUTTON BACK PROPERLY. submitMatchUX sets btn.dataset.busy='1' to stop double
+// taps, but the failure paths below only restored the label — the busy flag stayed set, so the
+// NEXT tap returned immediately and the button looked dead until the page was reloaded. One
+// failed submit (a bad PIN, a dropped connection, a paused project) killed the button for good.
+function mdrBtnFree(btn){
+  try{
+    if(!btn) return;
+    btn.dataset.busy='';
+    btn.disabled=false;
+    btn.style.opacity='';
+    btn.innerHTML = btn.dataset._label || '\u2713 Submit Match';
+  }catch(e){}
+}
 async function doSubmit(btn){  const err=document.getElementById('err4');
   if(!navigator.onLine){
     err.innerHTML='<strong>You are offline.</strong> Your score was <strong>NOT</strong> sent. Please reconnect and submit again — nothing has been saved yet.';
-    err.style.display='block'; btn.disabled=false; btn.textContent='\u2713 Submit Match';
+    err.style.display='block'; mdrBtnFree(btn);
     return;
   }
   btn.textContent='Verifying & submitting...';
@@ -5584,7 +5608,7 @@ async function doSubmit(btn){  const err=document.getElementById('err4');
       ]);
     }catch(e){
       err.innerHTML='<strong>⚠️ Not submitted.</strong><br>Could not form the pair: '+(e.message||e);
-      err.style.display='block'; btn.disabled=false; btn.textContent='\u2713 Submit Match';
+      err.style.display='block'; mdrBtnFree(btn);
       return;
     }
     // Build set_scores string e.g. "6-3,6-4"
@@ -5620,12 +5644,12 @@ async function doSubmit(btn){  const err=document.getElementById('err4');
         const msg=(result && result.error) ? result.error : ('save failed (status '+resp.status+')');
         // PIN errors are user-fixable; show them plainly
         err.innerHTML='<strong>⚠️ Not submitted.</strong><br>'+msg;
-        err.style.display='block'; btn.disabled=false; btn.textContent='\u2713 Submit Match';
+        err.style.display='block'; mdrBtnFree(btn);
         return;
       }
     }catch(netErr){
       err.innerHTML='<strong>⚠️ Your score was NOT saved.</strong><br>Connection problem. Please try again. Nothing has been recorded yet.';
-      err.style.display='block'; btn.disabled=false; btn.textContent='\u2713 Submit Match';
+      err.style.display='block'; mdrBtnFree(btn);
       return;
     }
 
